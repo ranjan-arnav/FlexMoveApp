@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "leaflet/dist/leaflet.css";
 import { Button } from "@/components/ui/button";
 import {
@@ -55,12 +55,19 @@ import {
   MessageSquare,
   Settings,
   AlertCircle,
-  Check
+  Check,
+  Sparkles,
+  Moon,
+  Sun
 } from "lucide-react";
 import Image from "next/image";
 import { AnalyticsCharts } from "@/components/analytics-charts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
 import { Bar, BarChart, Line, LineChart, Pie, PieChart, CartesianGrid, XAxis, YAxis, Tooltip as RTooltip, Legend as RLegend, Cell } from "recharts";
+import { Chatbot } from "@/components/chatbot";
+import { AIInsightsButton } from "@/components/ai-insights-button";
+import { storage } from "@/lib/storage";
+import { cn } from "@/lib/utils";
 
 type UserRole = "supplier" | "transporter" | "customer" | null;
 
@@ -106,6 +113,11 @@ export default function FlexMovePage() {
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState<UserRole>(null);
 
+  // Initialize storage on mount
+  useEffect(() => {
+    storage.initialize();
+  }, []);
+
   // Global state for notifications and alerts
   const [notifications, setNotifications] = useState<Array<{
     id: string;
@@ -116,7 +128,98 @@ export default function FlexMovePage() {
   }>>([]);
   
   // Global state for shipments and data
-  const [globalShipments, setGlobalShipments] = useState<ShipmentData[]>([]);
+  const [globalShipments, setGlobalShipments] = useState<ShipmentData[]>([
+    {
+      id: "SH001",
+      customer: "TechCorp Inc.",
+      transporter: "FastTrack Logistics",
+      mode: "truck",
+      route: "New York → Los Angeles",
+      status: "in-transit",
+      eta: "2 days",
+      cost: 1200,
+      carbonFootprint: 85,
+      riskLevel: "low",
+      disruptionProbability: 5,
+      origin: "New York, NY",
+      destination: "Los Angeles, CA",
+      weight: 500,
+      priority: "high",
+      progress: 65
+    },
+    {
+      id: "SH002",
+      customer: "Global Retail",
+      transporter: "Ocean Express",
+      mode: "ship",
+      route: "Los Angeles → Shanghai",
+      status: "delivered",
+      eta: "Completed",
+      cost: 3500,
+      carbonFootprint: 220,
+      riskLevel: "medium",
+      disruptionProbability: 15,
+      origin: "Los Angeles, CA",
+      destination: "Shanghai, China",
+      weight: 2000,
+      priority: "medium",
+      progress: 100
+    },
+    {
+      id: "SH003",
+      customer: "Manufacturing Co.",
+      transporter: "Green Transport",
+      mode: "ev",
+      route: "Chicago → Miami",
+      status: "pending",
+      eta: "5 days",
+      cost: 800,
+      carbonFootprint: 45,
+      riskLevel: "low",
+      disruptionProbability: 8,
+      origin: "Chicago, IL",
+      destination: "Miami, FL",
+      weight: 350,
+      priority: "low",
+      progress: 10
+    },
+    {
+      id: "SH004",
+      customer: "Global Retail",
+      transporter: "Ocean Express",
+      mode: "ship",
+      route: "Chicago → Miami",
+      status: "dispatched",
+      eta: "3 days",
+      cost: 2450,
+      carbonFootprint: 120,
+      riskLevel: "low",
+      disruptionProbability: 10,
+      origin: "Chicago, IL",
+      destination: "Miami, FL",
+      weight: 1200,
+      priority: "medium",
+      progress: 25
+    },
+    {
+      id: "SH007",
+      customer: "Manufacturing Co.",
+      transporter: "Green Transport",
+      mode: "truck",
+      route: "Seattle → Denver",
+      status: "preparing",
+      eta: "5 days",
+      cost: 950,
+      carbonFootprint: 65,
+      riskLevel: "low",
+      disruptionProbability: 5,
+      origin: "Seattle, WA",
+      destination: "Denver, CO",
+      weight: 450,
+      priority: "low",
+      progress: 10
+    }
+  ]);
   const [globalDisruptions, setGlobalDisruptions] = useState<DisruptionAlert[]>([]);
   
   // Global state for create shipment flow
@@ -141,6 +244,33 @@ export default function FlexMovePage() {
   // Global state for rerouting
   const [showRerouteDialog, setShowRerouteDialog] = useState(false);
   const [selectedDisruption, setSelectedDisruption] = useState<DisruptionAlert | null>(null);
+
+  // Chatbot state
+  const [isChatbotOpen, setIsChatbotOpen] = useState(false);
+  const [chatbotContext, setChatbotContext] = useState<{
+    message: string;
+    context?: any;
+  } | null>(null);
+
+  // Dark mode state
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  // Toggle dark mode
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
+
+  // Handle AI Insights button click
+  const handleAIInsights = (message: string, context?: any) => {
+    setIsChatbotOpen(true);
+    setChatbotContext({ message, context });
+    // Clear after a brief moment to allow re-triggering
+    setTimeout(() => setChatbotContext(null), 1000);
+  };
   const [availableRoutes, setAvailableRoutes] = useState<Array<{
     id: string;
     name: string;
@@ -1067,40 +1197,85 @@ export default function FlexMovePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className={cn(
+      "min-h-screen transition-all duration-300",
+      isDarkMode ? "bg-gradient-to-br from-slate-950 to-slate-900" : "bg-gradient-to-br from-gray-50 to-gray-100",
+      isChatbotOpen && "lg:mr-[450px]"
+    )}>
       {/* Header */}
-      <header className="border-b bg-card">
-        <div className="flex h-16 items-center justify-between px-6">
-          <div className="flex items-center gap-3">
+      <header className={cn(
+        "border-b bg-card dark:bg-slate-900/95 dark:border-slate-800 sticky top-0 z-40 backdrop-blur-sm bg-opacity-95 transition-all duration-300"
+      )}>
+        <div className="flex h-14 sm:h-16 items-center justify-between px-3 sm:px-6">
+          <div className="flex items-center gap-2 sm:gap-3">
             <Image
               src="/images/logo.png"
               alt="FlexMove"
               width={120}
               height={40}
-              className="h-8 w-auto"
+              className="h-6 sm:h-8 w-auto"
             />
             <div className="flex items-baseline gap-1 select-none">
-              <span className="text-foreground text-xl font-extrabold leading-none">
+              <span className="text-foreground dark:text-white text-lg sm:text-xl font-extrabold leading-none">
                 Flex
               </span>
-              <span className="text-emerald-600 text-xl font-extrabold leading-none">
+              <span className="text-emerald-600 dark:text-emerald-400 text-lg sm:text-xl font-extrabold leading-none">
                 Move
               </span>
             </div>
-            <div className="ml-4 text-sm text-muted-foreground">
+            <div className="hidden md:block ml-4 text-sm text-muted-foreground dark:text-slate-400">
               {currentUser === "supplier" && "Supplier Dashboard"}
               {currentUser === "transporter" && "Transporter Dashboard"}
               {currentUser === "customer" && "Customer Dashboard"}
             </div>
           </div>
-          <Button variant="outline" onClick={handleLogout} className="btn-glow">
-            Sign Out
-          </Button>
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Dark Mode Toggle */}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className="rounded-full border-2 hover:scale-105 transition-all duration-300 h-9 w-9 sm:h-10 sm:w-10"
+            >
+              {isDarkMode ? (
+                <Sun className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500" />
+              ) : (
+                <Moon className="h-4 w-4 sm:h-5 sm:w-5 text-slate-700" />
+              )}
+            </Button>
+            
+            <Button 
+              variant="default" 
+              onClick={() => setIsChatbotOpen(!isChatbotOpen)}
+              className="relative bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 hover:from-blue-700 hover:via-purple-700 hover:to-blue-700 text-white font-bold shadow-xl flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-2.5 rounded-full border-2 border-white/30 group overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-105"
+            >
+              {/* Animated background glow */}
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400 opacity-0 group-hover:opacity-50 blur-xl transition-opacity duration-300"></div>
+              
+              {/* Sparkle effect */}
+              <div className="absolute top-0 left-0 w-full h-full">
+                <div className="absolute top-1 left-4 w-1 h-1 bg-white rounded-full animate-ping"></div>
+                <div className="absolute top-3 right-6 w-1 h-1 bg-white rounded-full animate-ping" style={{ animationDelay: '0.5s' }}></div>
+              </div>
+              
+              {/* Content */}
+              <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 relative z-10 animate-pulse" />
+              <span className="relative z-10 text-sm sm:text-base"><span className="hidden sm:inline">Ask </span>Flexify</span>
+              
+              {/* Active indicator */}
+              {isChatbotOpen && (
+                <span className="absolute -top-1 -right-1 h-3 w-3 bg-green-400 rounded-full border-2 border-white animate-pulse shadow-lg z-20"></span>
+              )}
+            </Button>
+            <Button variant="outline" onClick={handleLogout} className="btn-glow">
+              Sign Out
+            </Button>
+          </div>
         </div>
       </header>
 
       {/* Dashboard Content */}
-      <main className="p-6">
+      <main className="p-3 sm:p-4 md:p-6">
         {currentUser === "supplier" && (
           <SupplierDashboard 
             onCreateShipment={handleCreateShipment}
@@ -1108,6 +1283,7 @@ export default function FlexMovePage() {
             onRerouteRequest={handleRerouteRequest}
             shipments={globalShipments}
             disruptions={globalDisruptions}
+            onAIInsights={handleAIInsights}
           />
         )}
         {currentUser === "transporter" && (
@@ -1123,20 +1299,21 @@ export default function FlexMovePage() {
             onNewOrder={handleNewOrder}
             shipments={globalShipments}
             suppliers={suppliers}
+            onAIInsights={handleAIInsights}
           />
         )}
       </main>
 
       {/* Notification System */}
-      <div className="fixed top-4 right-4 z-50 space-y-2">
+      <div className="fixed top-16 sm:top-4 right-2 sm:right-4 z-50 space-y-2 max-w-[calc(100vw-1rem)] sm:max-w-sm">
         {notifications.map((notification) => (
           <div
             key={notification.id}
             className={`p-4 rounded-lg shadow-lg border-l-4 max-w-sm animate-in slide-in-from-right-full duration-300 ${
-              notification.type === 'success' ? 'bg-green-50 border-green-500 text-green-800' :
-              notification.type === 'error' ? 'bg-red-50 border-red-500 text-red-800' :
-              notification.type === 'warning' ? 'bg-yellow-50 border-yellow-500 text-yellow-800' :
-              'bg-blue-50 border-blue-500 text-blue-800'
+              notification.type === 'success' ? 'bg-green-50 dark:bg-green-900/20 border-green-500 dark:border-green-700 text-green-800 dark:text-green-300' :
+              notification.type === 'error' ? 'bg-red-50 dark:bg-red-900/20 border-red-500 dark:border-red-700 text-red-800 dark:text-red-300' :
+              notification.type === 'warning' ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-500 dark:border-yellow-700 text-yellow-800 dark:text-yellow-300' :
+              'bg-blue-50 dark:bg-blue-900/20 border-blue-500 dark:border-blue-700 text-blue-800 dark:text-blue-300'
             }`}
           >
             <div className="flex items-start justify-between">
@@ -1149,7 +1326,7 @@ export default function FlexMovePage() {
               </div>
               <button
                 onClick={() => removeNotification(notification.id)}
-                className="ml-2 text-gray-400 hover:text-gray-600"
+                className="ml-2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
               >
                 ×
               </button>
@@ -1221,6 +1398,16 @@ export default function FlexMovePage() {
           }}
         />
       )}
+
+      {/* AI Chatbot */}
+      <Chatbot 
+        userRole={currentUser} 
+        shipments={globalShipments}
+        disruptions={globalDisruptions}
+        autoOpenWithContext={chatbotContext || undefined}
+        isOpen={isChatbotOpen}
+        onClose={() => setIsChatbotOpen(false)}
+      />
     </div>
   );
 }
@@ -1251,10 +1438,10 @@ function RerouteDialog({
 }) {
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'available': return 'text-green-600 bg-green-50 border-green-200';
-      case 'congested': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      case 'delayed': return 'text-red-600 bg-red-50 border-red-200';
-      default: return 'text-gray-600 bg-gray-50 border-gray-200';
+      case 'available': return 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800';
+      case 'congested': return 'text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800';
+      case 'delayed': return 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800';
+      default: return 'text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-700';
     }
   };
 
@@ -1422,8 +1609,8 @@ function NewOrderDialog({
                     key={supplier.id}
                     className={`p-4 border rounded-lg cursor-pointer transition-all ${
                       selectedSupplier === supplier.id
-                        ? 'border-purple-500 bg-purple-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-purple-500 dark:border-purple-700 bg-purple-50 dark:bg-purple-900/20'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                     }`}
                     onClick={() => onSupplierSelection(supplier.id)}
                   >
@@ -1481,7 +1668,7 @@ function NewOrderDialog({
             {selectedSupplier && (
               <div className="space-y-4">
                 <Label className="text-lg font-semibold">Order Details</Label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <Label htmlFor="product">Product/Service *</Label>
                     <Input
@@ -1566,13 +1753,15 @@ function SupplierDashboard({
   onDisruptionAction, 
   onRerouteRequest,
   shipments = [], 
-  disruptions: propDisruptions = [] 
+  disruptions: propDisruptions = [],
+  onAIInsights
 }: {
   onCreateShipment: () => void;
   onDisruptionAction: (id: string, action: string) => void;
   onRerouteRequest: (disruption: DisruptionAlert) => void;
   shipments: ShipmentData[];
   disruptions: DisruptionAlert[];
+  onAIInsights: (message: string, context?: any) => void;
 }) {
   const [selectedShipment, setSelectedShipment] = useState<ShipmentData | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
@@ -1771,29 +1960,29 @@ function SupplierDashboard({
   return (
     <div className="space-y-6">
       {/* Main Content */}
-      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-700 p-8 text-white">
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-700 p-4 sm:p-6 md:p-8 text-white">
         <div className="absolute inset-0 bg-black/20"></div>
         <div className="relative z-10">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-4xl font-bold mb-2">Supplier Dashboard</h1>
-              <p className="text-blue-100 text-lg">Manage your supply chain operations with confidence</p>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 dark:text-white">Supplier Dashboard</h1>
+              <p className="text-blue-100 dark:text-slate-300 text-sm sm:text-base md:text-lg">Manage your supply chain operations with confidence</p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               <Button 
                 onClick={onCreateShipment}
-                className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm transition-all duration-200 hover:scale-105"
+                className="bg-white/20 hover:bg-white/30 dark:bg-white/10 dark:hover:bg-white/20 text-white border-white/30 backdrop-blur-sm transition-all duration-200 hover:scale-105 text-sm sm:text-base"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Create Shipment
+                <span className="hidden sm:inline">Create </span>Shipment
               </Button>
               <Button 
                 variant="outline" 
                 onClick={() => setActiveTab("analytics")}
-                className="bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-sm"
+                className="bg-white/10 hover:bg-white/20 dark:bg-white/5 dark:hover:bg-white/15 text-white border-white/30 backdrop-blur-sm text-sm sm:text-base"
               >
                 <BarChart3 className="h-4 w-4 mr-2" />
-                Analytics
+                <span className="hidden sm:inline">Analytics</span>
               </Button>
             </div>
           </div>
@@ -1803,27 +1992,27 @@ function SupplierDashboard({
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5 mb-6 bg-gradient-to-r from-slate-50 to-slate-100 p-1 rounded-lg">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5 mb-6 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 p-1 rounded-lg border dark:border-slate-700 gap-1">
           <TabsTrigger 
             value="overview" 
-            className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 font-semibold transition-all duration-200"
+            className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
           >
-            <Package className="h-4 w-4 mr-2" />
-            Overview
+            <Package className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            <span className="hidden xs:inline">Overview</span>
           </TabsTrigger>
           <TabsTrigger 
             value="operations" 
-            className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-purple-600 font-semibold transition-all duration-200"
+            className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
           >
-            <Truck className="h-4 w-4 mr-2" />
-            Operations
+            <Truck className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            <span className="hidden xs:inline">Operations</span>
           </TabsTrigger>
           <TabsTrigger 
             value="disruptions" 
-            className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-red-600 font-semibold transition-all duration-200 relative"
+            className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-red-600 dark:data-[state=active]:text-red-400 dark:text-slate-300 font-semibold transition-all duration-200 relative text-xs sm:text-sm col-span-2 sm:col-span-1"
           >
-            <AlertTriangle className="h-4 w-4 mr-2" />
-            Disruptions
+            <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            <span className="hidden xs:inline">Disruptions</span>
             {localDisruptions.length > 0 && (
               <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white">
                 {localDisruptions.length}
@@ -1832,101 +2021,122 @@ function SupplierDashboard({
           </TabsTrigger>
           <TabsTrigger 
             value="analytics" 
-            className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-green-600 font-semibold transition-all duration-200"
+            className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-green-600 dark:data-[state=active]:text-green-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
           >
-            <BarChart3 className="h-4 w-4 mr-2" />
-            Analytics
+            <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            <span className="hidden xs:inline">Analytics</span>
           </TabsTrigger>
           <TabsTrigger 
             value="settings" 
-            className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-orange-600 font-semibold transition-all duration-200"
+            className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
           >
-            <Settings className="h-4 w-4 mr-2" />
-            Settings
+            <Settings className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            <span className="hidden xs:inline">Settings</span>
           </TabsTrigger>
       </TabsList>
       <TabsContent value="overview" className="space-y-6">
+          {/* Flexify AI Status Banner */}
+          <div className="bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 text-white rounded-xl p-3 sm:p-4 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm flex-shrink-0">
+                <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
+              </div>
+              <div>
+                <div className="font-bold text-base sm:text-lg">Flexify AI Active</div>
+                <div className="text-xs sm:text-sm opacity-90">Monitoring your supply chain in real-time • Ask anything, anytime</div>
+              </div>
+            </div>
+            <Button 
+              variant="secondary" 
+              size="sm"
+              className="bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-700 font-bold shadow-md w-full sm:w-auto text-sm"
+              onClick={() => onAIInsights("What's my supply chain status right now?")}
+            >
+              Quick Insight
+            </Button>
+          </div>
+
           {/* Enhanced Stats Cards */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 shadow-lg hover:shadow-xl transition-all duration-300">
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/30 border-blue-200 dark:border-blue-800/50 shadow-lg hover:shadow-xl transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-blue-700">
+                <CardTitle className="text-sm font-medium text-blue-700 dark:text-blue-300">
               Active Shipments
             </CardTitle>
-                <div className="p-2 bg-blue-500 rounded-lg">
+                <div className="p-2 bg-blue-500 dark:bg-blue-600 rounded-lg">
                   <Package className="h-4 w-4 text-white" />
                 </div>
           </CardHeader>
           <CardContent>
-                <div className="text-3xl font-bold text-blue-800">24</div>
-                <p className="text-xs text-blue-600 font-medium">+2 from last week</p>
-                <div className="mt-2 w-full bg-blue-200 rounded-full h-2">
-                  <div className="bg-blue-500 h-2 rounded-full" style={{width: '80%'}}></div>
+                <div className="text-3xl font-bold text-blue-800 dark:text-blue-200">24</div>
+                <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">+2 from last week</p>
+                <div className="mt-2 w-full bg-blue-200 dark:bg-blue-900/40 rounded-full h-2">
+                  <div className="bg-blue-500 dark:bg-blue-400 h-2 rounded-full" style={{width: '80%'}}></div>
                 </div>
           </CardContent>
         </Card>
 
-            <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/50 dark:to-green-900/30 border-green-200 dark:border-green-800/50 shadow-lg hover:shadow-xl transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-green-700">
+                <CardTitle className="text-sm font-medium text-green-700 dark:text-green-300">
               On-Time Delivery
             </CardTitle>
-                <div className="p-2 bg-green-500 rounded-lg">
+                <div className="p-2 bg-green-500 dark:bg-green-600 rounded-lg">
                   <BarChart3 className="h-4 w-4 text-white" />
                 </div>
           </CardHeader>
           <CardContent>
-                <div className="text-3xl font-bold text-green-800">94.2%</div>
-                <p className="text-xs text-green-600 font-medium">+1.2% from last month</p>
-                <div className="mt-2 w-full bg-green-200 rounded-full h-2">
-                  <div className="bg-green-500 h-2 rounded-full" style={{width: '94%'}}></div>
+                <div className="text-3xl font-bold text-green-800 dark:text-green-200">94.2%</div>
+                <p className="text-xs text-green-600 dark:text-green-400 font-medium">+1.2% from last month</p>
+                <div className="mt-2 w-full bg-green-200 dark:bg-green-900/40 rounded-full h-2">
+                  <div className="bg-green-500 dark:bg-green-400 h-2 rounded-full" style={{width: '94%'}}></div>
                 </div>
           </CardContent>
         </Card>
 
-            <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200 shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950/50 dark:to-emerald-900/30 border-emerald-200 dark:border-emerald-800/50 shadow-lg hover:shadow-xl transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-emerald-700">
+                <CardTitle className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
               Carbon Footprint
             </CardTitle>
-                <div className="p-2 bg-emerald-500 rounded-lg">
+                <div className="p-2 bg-emerald-500 dark:bg-emerald-600 rounded-lg">
                   <Leaf className="h-4 w-4 text-white" />
                 </div>
           </CardHeader>
           <CardContent>
-                <div className="text-3xl font-bold text-emerald-800">2.4t CO₂</div>
-                <p className="text-xs text-emerald-600 font-medium">-12% reduction</p>
-                <div className="mt-2 w-full bg-emerald-200 rounded-full h-2">
-                  <div className="bg-emerald-500 h-2 rounded-full" style={{width: '60%'}}></div>
+                <div className="text-3xl font-bold text-emerald-800 dark:text-emerald-200">2.4t CO₂</div>
+                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">-12% reduction</p>
+                <div className="mt-2 w-full bg-emerald-200 dark:bg-emerald-900/40 rounded-full h-2">
+                  <div className="bg-emerald-500 dark:bg-emerald-400 h-2 rounded-full" style={{width: '60%'}}></div>
                 </div>
           </CardContent>
         </Card>
 
-            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/50 dark:to-purple-900/30 border-purple-200 dark:border-purple-800/50 shadow-lg hover:shadow-xl transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-purple-700">Cost Savings</CardTitle>
-                <div className="p-2 bg-purple-500 rounded-lg">
+                <CardTitle className="text-sm font-medium text-purple-700 dark:text-purple-300">Cost Savings</CardTitle>
+                <div className="p-2 bg-purple-500 dark:bg-purple-600 rounded-lg">
                   <DollarSign className="h-4 w-4 text-white" />
                 </div>
           </CardHeader>
           <CardContent>
-                <div className="text-3xl font-bold text-purple-800">$12,450</div>
-                <p className="text-xs text-purple-600 font-medium">+8% this quarter</p>
-                <div className="mt-2 w-full bg-purple-200 rounded-full h-2">
-                  <div className="bg-purple-500 h-2 rounded-full" style={{width: '75%'}}></div>
+                <div className="text-3xl font-bold text-purple-800 dark:text-purple-200">$12,450</div>
+                <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">+8% this quarter</p>
+                <div className="mt-2 w-full bg-purple-200 dark:bg-purple-900/40 rounded-full h-2">
+                  <div className="bg-purple-500 dark:bg-purple-400 h-2 rounded-full" style={{width: '75%'}}></div>
                 </div>
           </CardContent>
         </Card>
       </div>
 
           {/* Enhanced Recent Shipments */}
-          <Card className="shadow-lg border-0 bg-gradient-to-br from-slate-50 to-white">
-            <CardHeader className="bg-gradient-to-r from-slate-100 to-slate-200 rounded-t-lg">
-              <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <Package className="h-5 w-5 text-blue-600" />
+          <Card className="shadow-lg border-0 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-800/50 dark:border-slate-700">
+            <CardHeader className="bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 rounded-t-lg">
+              <CardTitle className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 Recent Shipments
               </CardTitle>
-              <CardDescription className="text-slate-600">
+              <CardDescription className="text-slate-600 dark:text-slate-400">
                 Track your latest shipment activities and performance
           </CardDescription>
         </CardHeader>
@@ -1960,21 +2170,21 @@ function SupplierDashboard({
             ].map((shipment) => (
               <div
                 key={shipment.id}
-                    className="flex items-center justify-between p-4 border rounded-lg bg-white shadow-sm hover:shadow-md transition-all duration-200"
+                    className="flex items-center justify-between p-4 border rounded-lg bg-white dark:bg-slate-800/50 dark:border-slate-700 shadow-sm hover:shadow-md transition-all duration-200"
                   >
                     <div className="flex items-center gap-4">
                       <div className={`p-2 rounded-lg ${
-                        shipment.color === 'blue' ? 'bg-blue-100' :
-                        shipment.color === 'green' ? 'bg-green-100' : 'bg-yellow-100'
+                        shipment.color === 'blue' ? 'bg-blue-100 dark:bg-blue-900/50' :
+                        shipment.color === 'green' ? 'bg-green-100 dark:bg-green-900/50' : 'bg-yellow-100 dark:bg-yellow-900/50'
                       }`}>
                         <Package className={`h-4 w-4 ${
-                          shipment.color === 'blue' ? 'text-blue-600' :
-                          shipment.color === 'green' ? 'text-green-600' : 'text-yellow-600'
+                          shipment.color === 'blue' ? 'text-blue-600 dark:text-blue-400' :
+                          shipment.color === 'green' ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'
                         }`} />
                       </div>
                 <div>
-                        <div className="font-semibold text-slate-800">{shipment.id}</div>
-                        <div className="text-sm text-slate-600">{shipment.customer}</div>
+                        <div className="font-semibold text-slate-800 dark:text-slate-200">{shipment.id}</div>
+                        <div className="text-sm text-slate-600 dark:text-slate-400">{shipment.customer}</div>
                   </div>
                 </div>
                 <div className="text-right">
@@ -1984,14 +2194,14 @@ function SupplierDashboard({
                           shipment.status === "In Transit" ? "secondary" : "outline"
                         }
                         className={
-                          shipment.status === "Delivered" ? "bg-green-100 text-green-800" :
-                          shipment.status === "In Transit" ? "bg-blue-100 text-blue-800" : 
-                          "bg-yellow-100 text-yellow-800"
+                          shipment.status === "Delivered" ? "bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300" :
+                          shipment.status === "In Transit" ? "bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300" : 
+                          "bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300"
                         }
                       >
                         {shipment.status}
                       </Badge>
-                      <div className="text-xs text-slate-500 mt-1">{shipment.eta}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{shipment.eta}</div>
                 </div>
               </div>
             ))}
@@ -2000,13 +2210,13 @@ function SupplierDashboard({
       </Card>
 
           {/* Enhanced Active Shipments */}
-          <Card className="shadow-lg border-0 bg-gradient-to-br from-slate-50 to-white">
-            <CardHeader className="bg-gradient-to-r from-indigo-100 to-purple-100 rounded-t-lg">
-              <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <Truck className="h-5 w-5 text-indigo-600" />
+          <Card className="shadow-lg border-0 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-800/50 dark:border-slate-700">
+            <CardHeader className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-950/50 dark:to-purple-950/50 rounded-t-lg">
+              <CardTitle className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <Truck className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                 Active Shipments
               </CardTitle>
-              <CardDescription className="text-slate-600">
+              <CardDescription className="text-slate-600 dark:text-slate-400">
                 Manage and track your shipment portfolio with detailed insights
           </CardDescription>
         </CardHeader>
@@ -2015,24 +2225,30 @@ function SupplierDashboard({
             {shipments.map((shipment) => (
               <div
                 key={shipment.id}
-                    className="p-6 border rounded-xl bg-white shadow-sm hover:shadow-lg transition-all duration-300 space-y-4"
+                    className="p-6 border-2 border-blue-100 dark:border-blue-900/50 rounded-xl bg-gradient-to-br from-white to-blue-50/30 dark:from-slate-800/50 dark:to-blue-950/30 shadow-sm hover:shadow-xl hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-300 space-y-4 relative overflow-hidden"
               >
+                {/* Flexify indicator */}
+                <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/50 rounded-full text-xs font-semibold text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700">
+                  <Sparkles className="h-3 w-3" />
+                  <span>Flexify Ready</span>
+                </div>
+                
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                         <div className={`p-3 rounded-xl ${
-                          shipment.mode === 'truck' ? 'bg-blue-100' :
-                          shipment.mode === 'ship' ? 'bg-cyan-100' :
-                          shipment.mode === 'air' ? 'bg-purple-100' : 'bg-green-100'
+                          shipment.mode === 'truck' ? 'bg-blue-100 dark:bg-blue-900/50' :
+                          shipment.mode === 'ship' ? 'bg-cyan-100 dark:bg-cyan-900/50' :
+                          shipment.mode === 'air' ? 'bg-purple-100 dark:bg-purple-900/50' : 'bg-green-100 dark:bg-green-900/50'
                         }`}>
-                          {shipment.mode === "truck" && <Truck className="h-5 w-5 text-blue-600" />}
-                          {shipment.mode === "ship" && <Ship className="h-5 w-5 text-cyan-600" />}
-                          {shipment.mode === "air" && <Plane className="h-5 w-5 text-purple-600" />}
-                          {shipment.mode === "ev" && <Truck className="h-5 w-5 text-green-600" />}
+                          {shipment.mode === "truck" && <Truck className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
+                          {shipment.mode === "ship" && <Ship className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />}
+                          {shipment.mode === "air" && <Plane className="h-5 w-5 text-purple-600 dark:text-purple-400" />}
+                          {shipment.mode === "ev" && <Truck className="h-5 w-5 text-green-600 dark:text-green-400" />}
                         </div>
                     <div>
-                          <div className="font-bold text-lg text-slate-800">{shipment.id}</div>
-                          <div className="text-sm text-slate-600 font-medium">{shipment.customer}</div>
-                          <div className="text-xs text-slate-500">{shipment.route}</div>
+                          <div className="font-bold text-lg text-slate-800 dark:text-slate-200">{shipment.id}</div>
+                          <div className="text-sm text-slate-600 dark:text-slate-400 font-medium">{shipment.customer}</div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400">{shipment.route}</div>
                     </div>
                     <Badge
                       variant={
@@ -2041,56 +2257,56 @@ function SupplierDashboard({
                             shipment.status === "delayed" ? "destructive" : "outline"
                           }
                           className={`font-semibold ${
-                            shipment.status === "delivered" ? "bg-green-100 text-green-800" :
-                            shipment.status === "in-transit" ? "bg-blue-100 text-blue-800" :
-                            shipment.status === "delayed" ? "bg-red-100 text-red-800" :
-                            "bg-yellow-100 text-yellow-800"
+                            shipment.status === "delivered" ? "bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300" :
+                            shipment.status === "in-transit" ? "bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300" :
+                            shipment.status === "delayed" ? "bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300" :
+                            "bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300"
                           }`}
                         >
                           {shipment.status.replace("-", " ").toUpperCase()}
                     </Badge>
                   </div>
                   <div className="text-right">
-                        <div className="text-lg font-bold text-slate-800">{shipment.eta}</div>
-                        <div className="text-sm text-slate-600">ETA</div>
+                        <div className="text-lg font-bold text-slate-800 dark:text-slate-200">{shipment.eta}</div>
+                        <div className="text-sm text-slate-600 dark:text-slate-400">ETA</div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
-                        <DollarSign className="h-4 w-4 text-green-600" />
+                      <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                        <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
                         <div>
-                          <div className="text-slate-500 text-xs">Cost</div>
-                          <div className="font-semibold text-slate-800">${shipment.cost.toLocaleString()}</div>
+                          <div className="text-slate-500 dark:text-slate-400 text-xs">Cost</div>
+                          <div className="font-semibold text-slate-800 dark:text-slate-200">${shipment.cost.toLocaleString()}</div>
                   </div>
                   </div>
-                      <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
-                        <Leaf className="h-4 w-4 text-emerald-600" />
+                      <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                        <Leaf className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                         <div>
-                          <div className="text-slate-500 text-xs">Carbon</div>
-                          <div className="font-semibold text-slate-800">{shipment.carbonFootprint}t CO₂</div>
+                          <div className="text-slate-500 dark:text-slate-400 text-xs">Carbon</div>
+                          <div className="font-semibold text-slate-800 dark:text-slate-200">{shipment.carbonFootprint}t CO₂</div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
+                      <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
                     <AlertTriangle
                       className={`h-4 w-4 ${
-                            shipment.riskLevel === "high" ? "text-red-500" :
-                            shipment.riskLevel === "medium" ? "text-yellow-500" : "text-green-500"
+                            shipment.riskLevel === "high" ? "text-red-500 dark:text-red-400" :
+                            shipment.riskLevel === "medium" ? "text-yellow-500 dark:text-yellow-400" : "text-green-500 dark:text-green-400"
                       }`}
                     />
                         <div>
-                          <div className="text-slate-500 text-xs">Risk</div>
-                          <div className="font-semibold text-slate-800 capitalize">{shipment.riskLevel}</div>
+                          <div className="text-slate-500 dark:text-slate-400 text-xs">Risk</div>
+                          <div className="font-semibold text-slate-800 dark:text-slate-200 capitalize">{shipment.riskLevel}</div>
                   </div>
                       </div>
-                      <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
-                        {shipment.mode === "truck" && <Truck className="h-4 w-4 text-blue-600" />}
-                        {shipment.mode === "ship" && <Ship className="h-4 w-4 text-cyan-600" />}
-                        {shipment.mode === "air" && <Plane className="h-4 w-4 text-purple-600" />}
-                        {shipment.mode === "ev" && <Truck className="h-4 w-4 text-green-600" />}
+                      <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                        {shipment.mode === "truck" && <Truck className="h-4 w-4 text-blue-600 dark:text-blue-400" />}
+                        {shipment.mode === "ship" && <Ship className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />}
+                        {shipment.mode === "air" && <Plane className="h-4 w-4 text-purple-600 dark:text-purple-400" />}
+                        {shipment.mode === "ev" && <Truck className="h-4 w-4 text-green-600 dark:text-green-400" />}
                         <div>
-                          <div className="text-slate-500 text-xs">Mode</div>
-                          <div className="font-semibold text-slate-800 capitalize">
+                          <div className="text-slate-500 dark:text-slate-400 text-xs">Mode</div>
+                          <div className="font-semibold text-slate-800 dark:text-slate-200 capitalize">
                       {shipment.mode === "ev" ? "EV Truck" : shipment.mode}
                           </div>
                         </div>
@@ -2100,25 +2316,31 @@ function SupplierDashboard({
                 {shipment.status === "in-transit" && (
                   <div className="space-y-2">
                         <div className="flex justify-between text-sm font-medium">
-                          <span className="text-slate-600">Delivery Progress</span>
-                          <span className="text-slate-800">65%</span>
+                          <span className="text-slate-600 dark:text-slate-400">Delivery Progress</span>
+                          <span className="text-slate-800 dark:text-slate-200">65%</span>
                     </div>
-                        <div className="w-full bg-slate-200 rounded-full h-3">
-                          <div className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full" style={{width: '65%'}}></div>
+                        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3">
+                          <div className="bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-400 dark:to-blue-500 h-3 rounded-full" style={{width: '65%'}}></div>
                         </div>
                   </div>
                 )}
 
                     <div className="flex gap-2 pt-2">
-                      <Button size="sm" variant="outline" className="flex-1 hover:bg-blue-50 hover:border-blue-300">
+                      <Button size="sm" variant="outline" className="flex-1 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:border-blue-300 dark:hover:border-blue-700 dark:text-slate-200">
                         <MapPin className="h-4 w-4 mr-1" />
                         Track
                       </Button>
-                      <Button size="sm" variant="outline" className="flex-1 hover:bg-green-50 hover:border-green-300">
+                      <Button size="sm" variant="outline" className="flex-1 hover:bg-green-50 dark:hover:bg-green-900/30 hover:border-green-300 dark:hover:border-green-700 dark:text-slate-200">
                         <BarChart3 className="h-4 w-4 mr-1" />
                         Details
                       </Button>
-                      <Button size="sm" variant="outline" className="flex-1 hover:bg-purple-50 hover:border-purple-300">
+                      <AIInsightsButton
+                        message={`Tell me about shipment ${shipment.id}. What's its current status, estimated delivery time, and any potential risks?`}
+                        context={{ shipmentId: shipment.id, shipment }}
+                        onClick={onAIInsights}
+                        className="flex-1 hover:bg-purple-50 dark:hover:bg-purple-900/30 hover:border-purple-300 dark:hover:border-purple-700"
+                      />
+                      <Button size="sm" variant="outline" className="flex-1 hover:bg-purple-50 dark:hover:bg-purple-900/30 hover:border-purple-300 dark:hover:border-purple-700 dark:text-slate-200">
                         <Users className="h-4 w-4 mr-1" />
                         Contact
                       </Button>
@@ -2130,14 +2352,14 @@ function SupplierDashboard({
       </Card>
 
           {/* Enhanced Analytics Section */}
-      <div className="grid gap-6 md:grid-cols-2">
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-orange-50 to-red-50">
-              <CardHeader className="bg-gradient-to-r from-orange-100 to-red-100 rounded-t-lg">
-                <CardTitle className="text-xl font-bold text-orange-800 flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-orange-600" />
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/50 dark:to-red-950/30 dark:border-orange-800/50">
+              <CardHeader className="bg-gradient-to-r from-orange-100 to-red-100 dark:from-orange-950/50 dark:to-red-950/50 rounded-t-lg">
+                <CardTitle className="text-xl font-bold text-orange-800 dark:text-orange-200 flex items-center gap-2">
+                  <MapPin className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                   Route Performance
                 </CardTitle>
-                <CardDescription className="text-slate-600">Most disrupted routes this month</CardDescription>
+                <CardDescription className="text-slate-600 dark:text-slate-400">Most disrupted routes this month</CardDescription>
           </CardHeader>
               <CardContent className="p-6">
             <div className="space-y-4">
@@ -2149,16 +2371,16 @@ function SupplierDashboard({
               ].map((route) => (
                 <div key={route.route} className="space-y-2">
                       <div className="flex justify-between text-sm font-medium">
-                        <span className="text-slate-700">{route.route}</span>
-                        <span className="text-slate-600">{route.disruptions} disruptions</span>
+                        <span className="text-slate-700 dark:text-slate-300">{route.route}</span>
+                        <span className="text-slate-600 dark:text-slate-400">{route.disruptions} disruptions</span>
                   </div>
-                      <div className="w-full bg-slate-200 rounded-full h-3">
+                      <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3">
                         <div 
                           className={`h-3 rounded-full ${
-                            route.color === 'red' ? 'bg-gradient-to-r from-red-400 to-red-600' :
-                            route.color === 'orange' ? 'bg-gradient-to-r from-orange-400 to-orange-600' :
-                            route.color === 'yellow' ? 'bg-gradient-to-r from-yellow-400 to-yellow-600' :
-                            'bg-gradient-to-r from-green-400 to-green-600'
+                            route.color === 'red' ? 'bg-gradient-to-r from-red-400 to-red-600 dark:from-red-500 dark:to-red-700' :
+                            route.color === 'orange' ? 'bg-gradient-to-r from-orange-400 to-orange-600 dark:from-orange-500 dark:to-orange-700' :
+                            route.color === 'yellow' ? 'bg-gradient-to-r from-yellow-400 to-yellow-600 dark:from-yellow-500 dark:to-yellow-700' :
+                            'bg-gradient-to-r from-green-400 to-green-600 dark:from-green-500 dark:to-green-700'
                           }`}
                           style={{width: `${route.percentage}%`}}
                         ></div>
@@ -2169,33 +2391,33 @@ function SupplierDashboard({
           </CardContent>
         </Card>
 
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-indigo-50 to-purple-50">
-              <CardHeader className="bg-gradient-to-r from-indigo-100 to-purple-100 rounded-t-lg">
-                <CardTitle className="text-xl font-bold text-purple-800 flex items-center gap-2">
-                  <Users className="h-5 w-5 text-indigo-600" />
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/50 dark:to-purple-950/30 dark:border-indigo-800/50">
+              <CardHeader className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-950/50 dark:to-purple-950/50 rounded-t-lg">
+                <CardTitle className="text-xl font-bold text-purple-800 dark:text-purple-200 flex items-center gap-2">
+                  <Users className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                   Transporter Reliability
                 </CardTitle>
-                <CardDescription className="text-slate-600">Performance ratings and on-time delivery</CardDescription>
+                <CardDescription className="text-slate-600 dark:text-slate-400">Performance ratings and on-time delivery</CardDescription>
           </CardHeader>
               <CardContent className="p-6">
             <div className="space-y-4">
               {transporters.map((transporter) => (
                 <div
                   key={transporter.id}
-                      className="flex items-center justify-between p-4 bg-white rounded-lg shadow-sm"
+                      className="flex items-center justify-between p-4 bg-white dark:bg-slate-800/50 rounded-lg shadow-sm dark:border dark:border-slate-700"
                 >
                   <div className="flex items-center gap-3">
-                        <div className="p-2 bg-indigo-100 rounded-lg">
-                          <Users className="h-4 w-4 text-indigo-600" />
+                        <div className="p-2 bg-indigo-100 dark:bg-indigo-900/50 rounded-lg">
+                          <Users className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                         </div>
                         <div>
-                          <div className="font-semibold text-slate-800">{transporter.name}</div>
-                          <div className="text-sm text-slate-600">{transporter.modes.join(", ")}</div>
+                          <div className="font-semibold text-slate-800 dark:text-slate-200">{transporter.name}</div>
+                          <div className="text-sm text-slate-600 dark:text-slate-400">{transporter.modes.join(", ")}</div>
                     </div>
                     {transporter.evFleet && (
                       <Badge
                         variant="outline"
-                            className="text-green-600 border-green-300 bg-green-50"
+                            className="text-green-600 dark:text-green-400 border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/50"
                       >
                         <Leaf className="h-3 w-3 mr-1" />
                         EV Fleet
@@ -2203,8 +2425,8 @@ function SupplierDashboard({
                     )}
                   </div>
                   <div className="text-right">
-                        <div className="font-bold text-lg text-slate-800">{transporter.rating}/5.0</div>
-                        <div className="text-xs text-slate-500">Rating</div>
+                        <div className="font-bold text-lg text-slate-800 dark:text-slate-200">{transporter.rating}/5.0</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">Rating</div>
                   </div>
                 </div>
               ))}
@@ -2214,13 +2436,13 @@ function SupplierDashboard({
       </div>
 
           {/* Enhanced Advanced Analytics */}
-          <Card className="shadow-lg border-0 bg-gradient-to-br from-slate-50 to-white">
-            <CardHeader className="bg-gradient-to-r from-slate-100 to-slate-200 rounded-t-lg">
-              <CardTitle className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                <BarChart3 className="h-6 w-6 text-slate-600" />
+          <Card className="shadow-lg border-0 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-800/50 dark:border-slate-700">
+            <CardHeader className="bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 rounded-t-lg">
+              <CardTitle className="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <BarChart3 className="h-6 w-6 text-slate-600 dark:text-slate-400" />
                 Advanced Analytics & Insights
               </CardTitle>
-              <CardDescription className="text-slate-600 text-lg">
+              <CardDescription className="text-slate-600 dark:text-slate-400 text-lg">
             Comprehensive performance metrics and business intelligence
           </CardDescription>
         </CardHeader>
@@ -2233,22 +2455,22 @@ function SupplierDashboard({
 
       <TabsContent value="operations" className="space-y-6">
           {/* Operations Center */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-blue-50 to-blue-100 hover:shadow-xl transition-all duration-300">
-              <CardHeader className="bg-gradient-to-r from-blue-100 to-blue-200 rounded-t-lg">
-                <CardTitle className="text-lg font-bold text-blue-800 flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-blue-600" />
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/30 dark:border-blue-800/50 hover:shadow-xl transition-all duration-300">
+              <CardHeader className="bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-950/50 dark:to-blue-900/50 rounded-t-lg">
+                <CardTitle className="text-lg font-bold text-blue-800 dark:text-blue-200 flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   Disruption Management
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-800 mb-2">
+                  <div className="text-3xl font-bold text-blue-800 dark:text-blue-200 mb-2">
                     {localDisruptions.filter(d => d.status !== 'resolved').length}
                   </div>
-                  <div className="text-sm text-blue-600 mb-4">Active Disruptions</div>
+                  <div className="text-sm text-blue-600 dark:text-blue-400 mb-4">Active Disruptions</div>
                   <Button 
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                    className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white"
                     onClick={() => setActiveTab('disruptions')}
                   >
                     <AlertTriangle className="h-4 w-4 mr-2" />
@@ -2258,20 +2480,20 @@ function SupplierDashboard({
               </CardContent>
             </Card>
 
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-green-50 to-green-100 hover:shadow-xl transition-all duration-300">
-              <CardHeader className="bg-gradient-to-r from-green-100 to-green-200 rounded-t-lg">
-                <CardTitle className="text-lg font-bold text-green-800 flex items-center gap-2">
-                  <Plus className="h-5 w-5 text-green-600" />
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/50 dark:to-green-900/30 dark:border-green-800/50 hover:shadow-xl transition-all duration-300">
+              <CardHeader className="bg-gradient-to-r from-green-100 to-green-200 dark:from-green-950/50 dark:to-green-900/50 rounded-t-lg">
+                <CardTitle className="text-lg font-bold text-green-800 dark:text-green-200 flex items-center gap-2">
+                  <Plus className="h-5 w-5 text-green-600 dark:text-green-400" />
                   Create Shipment
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-green-800 mb-2">New</div>
-                  <div className="text-sm text-green-600 mb-4">Shipment Creation</div>
+                  <div className="text-3xl font-bold text-green-800 dark:text-green-200 mb-2">New</div>
+                  <div className="text-sm text-green-600 dark:text-green-400 mb-4">Shipment Creation</div>
                   <Button
                     onClick={onCreateShipment}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white"
+                    className="w-full bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 text-white"
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Create Now
@@ -2280,18 +2502,18 @@ function SupplierDashboard({
               </CardContent>
             </Card>
 
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-purple-50 to-purple-100 hover:shadow-xl transition-all duration-300">
-              <CardHeader className="bg-gradient-to-r from-purple-100 to-purple-200 rounded-t-lg">
-                <CardTitle className="text-lg font-bold text-purple-800 flex items-center gap-2">
-                  <Users className="h-5 w-5 text-purple-600" />
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/50 dark:to-purple-900/30 dark:border-purple-800/50 hover:shadow-xl transition-all duration-300">
+              <CardHeader className="bg-gradient-to-r from-purple-100 to-purple-200 dark:from-purple-950/50 dark:to-purple-900/50 rounded-t-lg">
+                <CardTitle className="text-lg font-bold text-purple-800 dark:text-purple-200 flex items-center gap-2">
+                  <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                   Carrier Assignment
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-purple-800 mb-2">{transporters.length}</div>
-                  <div className="text-sm text-purple-600 mb-4">Available Carriers</div>
-                  <Button className="w-full bg-purple-600 hover:bg-purple-700 text-white">
+                  <div className="text-3xl font-bold text-purple-800 dark:text-purple-200 mb-2">{transporters.length}</div>
+                  <div className="text-sm text-purple-600 dark:text-purple-400 mb-4">Available Carriers</div>
+                  <Button className="w-full bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-600 text-white">
                     <Users className="h-4 w-4 mr-2" />
                     Assign Carriers
                   </Button>
@@ -2300,47 +2522,47 @@ function SupplierDashboard({
             </Card>
           </div>
 
-          <Card className="shadow-lg border-0 bg-gradient-to-br from-slate-50 to-white">
-            <CardHeader className="bg-gradient-to-r from-slate-100 to-slate-200 rounded-t-lg">
-              <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <Truck className="h-5 w-5 text-slate-600" />
+          <Card className="shadow-lg border-0 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-800/50 dark:border-slate-700">
+            <CardHeader className="bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 rounded-t-lg">
+              <CardTitle className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <Truck className="h-5 w-5 text-slate-600 dark:text-slate-400" />
                 Operations Dashboard
               </CardTitle>
-              <CardDescription className="text-slate-600">Manage disruptions, create shipments, and assign carriers</CardDescription>
+              <CardDescription className="text-slate-600 dark:text-slate-400">Manage disruptions, create shipments, and assign carriers</CardDescription>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <h4 className="font-semibold text-blue-800 mb-2">Quick Actions</h4>
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+                <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800/50">
+                  <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-2">Quick Actions</h4>
                   <div className="space-y-2">
-                    <Button size="sm" variant="outline" className="w-full justify-start bg-white hover:bg-blue-50" onClick={() => setActiveTab('disruptions')}>
+                    <Button size="sm" variant="outline" className="w-full justify-start bg-white dark:bg-slate-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/30 dark:text-slate-200" onClick={() => setActiveTab('disruptions')}>
                       <AlertTriangle className="h-4 w-4 mr-2" />
                       View All Disruptions
                     </Button>
-                    <Button size="sm" variant="outline" className="w-full justify-start bg-white hover:bg-blue-50" onClick={() => setActiveTab('analytics')}>
+                    <Button size="sm" variant="outline" className="w-full justify-start bg-white dark:bg-slate-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/30 dark:text-slate-200" onClick={() => setActiveTab('analytics')}>
                       <BarChart3 className="h-4 w-4 mr-2" />
                       Performance Reports
                     </Button>
-                    <Button size="sm" variant="outline" className="w-full justify-start bg-white hover:bg-blue-50">
+                    <Button size="sm" variant="outline" className="w-full justify-start bg-white dark:bg-slate-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/30 dark:text-slate-200">
                       <Users className="h-4 w-4 mr-2" />
                       Manage Carriers
                     </Button>
                   </div>
                 </div>
-                <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                  <h4 className="font-semibold text-green-800 mb-2">Recent Activity</h4>
+                <div className="p-4 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800/50">
+                  <h4 className="font-semibold text-green-800 dark:text-green-300 mb-2">Recent Activity</h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-green-700">Shipment SH001</span>
-                      <span className="text-green-600">In Transit</span>
+                      <span className="text-green-700 dark:text-green-400">Shipment SH001</span>
+                      <span className="text-green-600 dark:text-green-400">In Transit</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-green-700">Disruption D001</span>
-                      <span className="text-red-600">Resolved</span>
+                      <span className="text-green-700 dark:text-green-400">Disruption D001</span>
+                      <span className="text-red-600 dark:text-red-400">Resolved</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-green-700">New Carrier</span>
-                      <span className="text-blue-600">Added</span>
+                      <span className="text-green-700 dark:text-green-400">New Carrier</span>
+                      <span className="text-blue-600 dark:text-blue-400">Added</span>
                     </div>
                   </div>
                 </div>
@@ -2352,41 +2574,47 @@ function SupplierDashboard({
         <TabsContent value="disruptions" className="space-y-6">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Active Disruptions</h2>
-              <Badge variant="destructive" className="px-3 py-1 text-sm">
+              <h2 className="text-2xl font-bold dark:text-white">Active Disruptions</h2>
+              <Badge variant="destructive" className="px-3 py-1 text-sm dark:bg-red-900/50 dark:text-red-300">
                 {localDisruptions.length} Active
               </Badge>
             </div>
             
             {localDisruptions.length === 0 ? (
-              <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
-                <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-2" />
-                <h3 className="text-lg font-medium">No active disruptions</h3>
-                <p className="text-muted-foreground">Your supply chain is running smoothly.</p>
+              <div className="text-center py-8 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg dark:bg-slate-800/30">
+                <CheckCircle className="h-12 w-12 text-green-500 dark:text-green-400 mx-auto mb-2" />
+                <h3 className="text-lg font-medium dark:text-white">No active disruptions</h3>
+                <p className="text-muted-foreground dark:text-slate-400">Your supply chain is running smoothly.</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {localDisruptions.map((disruption) => (
-                  <Card key={disruption.id} className="border-l-4 border-red-500 bg-red-50/50">
+                  <Card key={disruption.id} className="border-l-4 border-red-500 dark:border-red-700 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-950/30 dark:to-orange-950/30 shadow-md relative overflow-hidden dark:border-slate-700">
+                    {/* Flexify AI suggestion badge */}
+                    <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 bg-blue-600 dark:bg-blue-700 text-white rounded-full text-xs font-bold shadow-lg animate-pulse">
+                      <Sparkles className="h-3 w-3" />
+                      <span>AI Help Available</span>
+                    </div>
+                    
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-start">
                         <div>
-                          <CardTitle className="text-lg text-red-900">{disruption.type}</CardTitle>
-                          <CardDescription className="text-red-700">
+                          <CardTitle className="text-lg text-red-900 dark:text-red-300">{disruption.type}</CardTitle>
+                          <CardDescription className="text-red-700 dark:text-red-400">
                             Shipment: {disruption.shipmentId} • {disruption.location}
                           </CardDescription>
                         </div>
                         <Badge 
                           variant={disruption.severity === 'high' ? 'destructive' : 'secondary'}
-                          className="ml-2"
+                          className="ml-2 dark:bg-red-900/50 dark:text-red-300"
                         >
                           {disruption.severity.toUpperCase()}
                         </Badge>
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <p className="mb-4 text-red-800">{disruption.description}</p>
-                      <div className="flex items-center text-sm text-red-700 mb-4">
+                      <p className="mb-4 text-red-800 dark:text-red-300">{disruption.description}</p>
+                      <div className="flex items-center text-sm text-red-700 dark:text-red-400 mb-4">
                         <Clock className="h-4 w-4 mr-1" />
                         <span>Detected: {new Date(disruption.timestamp).toLocaleString()}</span>
                         <span className="mx-2">•</span>
@@ -2399,6 +2627,7 @@ function SupplierDashboard({
                           variant="outline" 
                           size="sm"
                           onClick={() => handleReroute(disruption)}
+                          className="dark:text-slate-200 dark:hover:bg-slate-800"
                         >
                           <RefreshCw className="h-4 w-4 mr-2" />
                           Reroute Shipment
@@ -2407,14 +2636,22 @@ function SupplierDashboard({
                           variant="outline" 
                           size="sm"
                           onClick={() => handleUpdateCustomer(disruption)}
+                          className="dark:text-slate-200 dark:hover:bg-slate-800"
                         >
                           <MessageSquare className="h-4 w-4 mr-2" />
                           Update Customer
                         </Button>
+                        <AIInsightsButton
+                          message={`How should I handle the ${disruption.type} affecting shipment ${disruption.shipmentId}? What are the best resolution strategies?`}
+                          context={{ disruptionId: disruption.id, disruption }}
+                          onClick={onAIInsights}
+                          size="sm"
+                        />
                         <Button 
                           variant="outline" 
                           size="sm"
                           onClick={() => handleDisruptionAction(disruption.id, 'escalate')}
+                          className="dark:text-slate-200 dark:hover:bg-slate-800"
                         >
                           <AlertTriangle className="h-4 w-4 mr-2" />
                           Escalate
@@ -2423,7 +2660,7 @@ function SupplierDashboard({
                           variant="outline" 
                           size="sm"
                           onClick={() => handleDisruptionAction(disruption.id, 'resolve')}
-                          className="ml-auto"
+                          className="ml-auto dark:text-slate-200 dark:hover:bg-slate-800"
                         >
                           <CheckCircle className="h-4 w-4 mr-2" />
                           Mark as Resolved
@@ -2439,13 +2676,21 @@ function SupplierDashboard({
 
         <TabsContent value="analytics" className="space-y-6">
           {/* Enhanced Analytics Charts */}
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-blue-50 to-blue-100">
-              <CardHeader className="bg-gradient-to-r from-blue-100 to-blue-200 rounded-t-lg">
-                <CardTitle className="text-lg font-bold text-blue-800 flex items-center gap-2">
-                  <Package className="h-5 w-5 text-blue-600" />
-                  Shipment Mode Split
-                </CardTitle>
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/30 dark:border-blue-800/50">
+              <CardHeader className="bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-950/50 dark:to-blue-900/50 rounded-t-lg">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg font-bold text-blue-800 dark:text-blue-200 flex items-center gap-2">
+                    <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    Shipment Mode Split
+                  </CardTitle>
+                  <AIInsightsButton
+                    message="Analyze my shipment mode distribution. Which transport modes am I using most, and what are the cost and efficiency implications?"
+                    onClick={onAIInsights}
+                    variant="ghost"
+                    size="sm"
+                  />
+                </div>
               </CardHeader>
               <CardContent className="p-6">
                 <ChartContainer id="supplier-pie" config={{}} className="aspect-square h-[300px]">
@@ -2468,12 +2713,20 @@ function SupplierDashboard({
               </CardContent>
             </Card>
             
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-orange-50 to-yellow-50">
-              <CardHeader className="bg-gradient-to-r from-orange-100 to-yellow-100 rounded-t-lg">
-                <CardTitle className="text-lg font-bold text-orange-800 flex items-center gap-2">
-                  <DollarSign className="h-5 w-5 text-orange-600" />
-                  Cost Breakdown
-                </CardTitle>
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-orange-50 to-yellow-50 dark:from-orange-950/50 dark:to-yellow-950/30 dark:border-orange-800/50">
+              <CardHeader className="bg-gradient-to-r from-orange-100 to-yellow-100 dark:from-orange-950/50 dark:to-yellow-950/50 rounded-t-lg">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg font-bold text-orange-800 dark:text-orange-200 flex items-center gap-2">
+                    <DollarSign className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                    Cost Breakdown
+                  </CardTitle>
+                  <AIInsightsButton
+                    message="Explain my cost breakdown. Where are the main expenses, and how can I optimize costs across different transport modes?"
+                    onClick={onAIInsights}
+                    variant="ghost"
+                    size="sm"
+                  />
+                </div>
               </CardHeader>
               <CardContent className="p-6">
                 <ChartContainer id="cost-breakdown-pie" config={{}} className="aspect-square h-[300px]">
@@ -2497,10 +2750,10 @@ function SupplierDashboard({
             </Card>
           </div>
 
-          <Card className="shadow-lg border-0 bg-gradient-to-br from-green-50 to-green-100">
-            <CardHeader className="bg-gradient-to-r from-green-100 to-green-200 rounded-t-lg">
-              <CardTitle className="text-lg font-bold text-green-800 flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-green-600" />
+          <Card className="shadow-lg border-0 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/50 dark:to-green-900/30 dark:border-green-800/50">
+            <CardHeader className="bg-gradient-to-r from-green-100 to-green-200 dark:from-green-950/50 dark:to-green-900/50 rounded-t-lg">
+              <CardTitle className="text-lg font-bold text-green-800 dark:text-green-200 flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-green-600 dark:text-green-400" />
                 Monthly Costs vs Carbon Footprint
               </CardTitle>
             </CardHeader>
@@ -2519,10 +2772,10 @@ function SupplierDashboard({
             </CardContent>
           </Card>
           
-          <Card className="shadow-lg border-0 bg-gradient-to-br from-purple-50 to-purple-100">
-            <CardHeader className="bg-gradient-to-r from-purple-100 to-purple-200 rounded-t-lg">
-              <CardTitle className="text-lg font-bold text-purple-800 flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-purple-600" />
+          <Card className="shadow-lg border-0 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/50 dark:to-purple-900/30 dark:border-purple-800/50">
+            <CardHeader className="bg-gradient-to-r from-purple-100 to-purple-200 dark:from-purple-950/50 dark:to-purple-900/50 rounded-t-lg">
+              <CardTitle className="text-lg font-bold text-purple-800 dark:text-purple-200 flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 On-Time Delivery vs Disruptions
               </CardTitle>
             </CardHeader>
@@ -2541,18 +2794,18 @@ function SupplierDashboard({
             </CardContent>
           </Card>
           
-          <Card className="shadow-lg border-0 bg-gradient-to-br from-slate-50 to-white">
-            <CardHeader className="bg-gradient-to-r from-slate-100 to-slate-200 rounded-t-lg">
-              <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <Users className="h-5 w-5 text-slate-600" />
+          <Card className="shadow-lg border-0 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-800/50 dark:border-slate-700">
+            <CardHeader className="bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 rounded-t-lg">
+              <CardTitle className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <Users className="h-5 w-5 text-slate-600 dark:text-slate-400" />
                 Carrier Performance Overview
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid gap-6 md:grid-cols-2">
-                <div className="space-y-4">
-                  <h3 className="font-semibold">On-Time Percentage by Carrier</h3>
-                  <ChartContainer config={{}} className="h-[250px] w-full">
+            <CardContent className="p-4 sm:p-6">
+              <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
+                <div className="space-y-3 sm:space-y-4">
+                  <h3 className="font-semibold dark:text-slate-200 text-sm sm:text-base">On-Time Percentage by Carrier</h3>
+                  <ChartContainer config={{}} className="h-[200px] sm:h-[250px] w-full">
                     <BarChart data={carrierPerformanceData} layout="vertical" margin={{ left: 20 }}>
                       <CartesianGrid horizontal={false} />
                       <XAxis type="number" domain={[80, 100]} />
@@ -2562,9 +2815,9 @@ function SupplierDashboard({
                     </BarChart>
                   </ChartContainer>
                 </div>
-                <div className="space-y-4">
-                  <h3 className="font-semibold">Average Cost per Shipment ($k)</h3>
-                  <ChartContainer config={{}} className="h-[250px] w-full">
+                <div className="space-y-3 sm:space-y-4">
+                  <h3 className="font-semibold dark:text-slate-200 text-sm sm:text-base">Average Cost per Shipment ($k)</h3>
+                  <ChartContainer config={{}} className="h-[200px] sm:h-[250px] w-full">
                     <BarChart data={carrierPerformanceData} layout="vertical" margin={{ left: 20 }}>
                       <CartesianGrid horizontal={false} />
                       <XAxis type="number" />
@@ -2581,27 +2834,27 @@ function SupplierDashboard({
 
         <TabsContent value="settings" className="space-y-6">
           {/* Enhanced Settings */}
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-slate-50 to-white">
-              <CardHeader className="bg-gradient-to-r from-slate-100 to-slate-200 rounded-t-lg">
-                <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-slate-600" />
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-800/50 dark:border-slate-700">
+              <CardHeader className="bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 rounded-t-lg">
+                <CardTitle className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                  <Shield className="h-5 w-5 text-slate-600 dark:text-slate-400" />
                   Account Settings
                 </CardTitle>
-                <CardDescription className="text-slate-600">Manage your supplier account preferences</CardDescription>
+                <CardDescription className="text-slate-600 dark:text-slate-400">Manage your supplier account preferences</CardDescription>
             </CardHeader>
               <CardContent className="p-6">
                 <div className="space-y-4">
-                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <h4 className="font-semibold text-blue-800 mb-2">Profile Information</h4>
-                    <Button variant="outline" className="w-full justify-start bg-white hover:bg-blue-50">
+                  <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800/50">
+                    <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-2">Profile Information</h4>
+                    <Button variant="outline" className="w-full justify-start bg-white dark:bg-slate-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/30 dark:text-slate-200">
                       <User className="h-4 w-4 mr-2" />
                       Edit Profile
                     </Button>
                   </div>
-                  <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                    <h4 className="font-semibold text-green-800 mb-2">Notification Preferences</h4>
-                    <Button variant="outline" className="w-full justify-start bg-white hover:bg-green-50">
+                  <div className="p-4 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800/50">
+                    <h4 className="font-semibold text-green-800 dark:text-green-300 mb-2">Notification Preferences</h4>
+                    <Button variant="outline" className="w-full justify-start bg-white dark:bg-slate-800/50 hover:bg-green-50 dark:hover:bg-green-900/30 dark:text-slate-200">
                       <AlertTriangle className="h-4 w-4 mr-2" />
                       Configure Alerts
                     </Button>
@@ -2610,26 +2863,26 @@ function SupplierDashboard({
             </CardContent>
           </Card>
 
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-slate-50 to-white">
-              <CardHeader className="bg-gradient-to-r from-slate-100 to-slate-200 rounded-t-lg">
-                <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-slate-600" />
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-800/50 dark:border-slate-700">
+              <CardHeader className="bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 rounded-t-lg">
+                <CardTitle className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-slate-600 dark:text-slate-400" />
                   Business Settings
                 </CardTitle>
-                <CardDescription className="text-slate-600">Configure your business operations</CardDescription>
+                <CardDescription className="text-slate-600 dark:text-slate-400">Configure your business operations</CardDescription>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="space-y-4">
-                  <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
-                    <h4 className="font-semibold text-purple-800 mb-2">Default Carriers</h4>
-                    <Button variant="outline" className="w-full justify-start bg-white hover:bg-purple-50">
+                  <div className="p-4 bg-purple-50 dark:bg-purple-950/30 rounded-lg border border-purple-200 dark:border-purple-800/50">
+                    <h4 className="font-semibold text-purple-800 dark:text-purple-300 mb-2">Default Carriers</h4>
+                    <Button variant="outline" className="w-full justify-start bg-white dark:bg-slate-800/50 hover:bg-purple-50 dark:hover:bg-purple-900/30 dark:text-slate-200">
                       <Users className="h-4 w-4 mr-2" />
                       Manage Carriers
                     </Button>
                   </div>
-                  <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
-                    <h4 className="font-semibold text-orange-800 mb-2">Shipping Preferences</h4>
-                    <Button variant="outline" className="w-full justify-start bg-white hover:bg-orange-50">
+                  <div className="p-4 bg-orange-50 dark:bg-orange-950/30 rounded-lg border border-orange-200 dark:border-orange-800/50">
+                    <h4 className="font-semibold text-orange-800 dark:text-orange-300 mb-2">Shipping Preferences</h4>
+                    <Button variant="outline" className="w-full justify-start bg-white dark:bg-slate-800/50 hover:bg-orange-50 dark:hover:bg-orange-900/30 dark:text-slate-200">
                       <Truck className="h-4 w-4 mr-2" />
                       Set Defaults
                     </Button>
@@ -2843,28 +3096,28 @@ function TransporterDashboard({
   return (
     <div className="space-y-6">
       {/* Enhanced Header with Gradient Background */}
-      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-green-600 via-teal-600 to-cyan-700 p-8 text-white">
-        <div className="absolute inset-0 bg-black/20"></div>
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-green-600 via-teal-600 to-cyan-700 dark:from-green-900 dark:via-teal-900 dark:to-cyan-900 p-4 sm:p-6 md:p-8 text-white">
+        <div className="absolute inset-0 bg-black/20 dark:bg-black/40"></div>
         <div className="relative z-10">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-4xl font-bold mb-2">Transporter Dashboard</h1>
-              <p className="text-green-100 text-lg">Manage your fleet operations and delivery performance</p>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2">Transporter Dashboard</h1>
+              <p className="text-green-100 dark:text-green-200 text-sm sm:text-base md:text-lg">Manage your fleet operations and delivery performance</p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               <Button 
                 onClick={() => setShowAddVehicle(true)}
-                className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm transition-all duration-200 hover:scale-105"
+                className="bg-white/20 hover:bg-white/30 dark:bg-white/10 dark:hover:bg-white/20 text-white border-white/30 backdrop-blur-sm transition-all duration-200 hover:scale-105 text-sm sm:text-base"
               >
               <Plus className="h-4 w-4 mr-2" />
-              Add Vehicle
+              <span className="hidden sm:inline">Add </span>Vehicle
             </Button>
               <Button 
                 variant="outline" 
-                className="bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-sm"
+                className="bg-white/10 hover:bg-white/20 dark:bg-white/5 dark:hover:bg-white/15 text-white border-white/30 backdrop-blur-sm text-sm sm:text-base"
               >
                 <BarChart3 className="h-4 w-4 mr-2" />
-                Analytics
+                <span className="hidden sm:inline">Analytics</span>
               </Button>
             </div>
           </div>
@@ -2875,136 +3128,136 @@ function TransporterDashboard({
 
       {/* Enhanced Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-6 bg-gradient-to-r from-slate-50 to-slate-100 p-1 rounded-lg">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 mb-6 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 p-1 rounded-lg dark:border dark:border-slate-700 gap-1">
           <TabsTrigger 
             value="overview" 
-            className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-green-600 font-semibold transition-all duration-200"
+            className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-green-600 dark:data-[state=active]:text-green-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
           >
-            <Truck className="h-4 w-4 mr-2" />
-            Overview
+            <Truck className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            <span className="hidden xs:inline">Overview</span>
           </TabsTrigger>
           <TabsTrigger 
             value="fleet" 
-            className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 font-semibold transition-all duration-200"
+            className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
           >
-            <Ship className="h-4 w-4 mr-2" />
-            Fleet
+            <Ship className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            <span className="hidden xs:inline">Fleet</span>
           </TabsTrigger>
           <TabsTrigger 
             value="shipments" 
-            className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-purple-600 font-semibold transition-all duration-200"
+            className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
           >
-            <Package className="h-4 w-4 mr-2" />
-            Shipments
+            <Package className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            <span className="hidden xs:inline">Shipments</span>
           </TabsTrigger>
           <TabsTrigger 
             value="analytics" 
-            className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-orange-600 font-semibold transition-all duration-200"
+            className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
           >
-            <BarChart3 className="h-4 w-4 mr-2" />
-            Analytics
+            <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            <span className="hidden xs:inline">Analytics</span>
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
 
           {/* Enhanced Stats Cards */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 shadow-lg hover:shadow-xl transition-all duration-300">
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/50 dark:to-green-900/30 border-green-200 dark:border-green-800/50 shadow-lg hover:shadow-xl transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-green-700">
+                <CardTitle className="text-sm font-medium text-green-700 dark:text-green-300">
               Active Vehicles
             </CardTitle>
-                <div className="p-2 bg-green-500 rounded-lg">
+                <div className="p-2 bg-green-500 dark:bg-green-600 rounded-lg">
                   <Truck className="h-4 w-4 text-white" />
                 </div>
           </CardHeader>
           <CardContent>
-                <div className="text-3xl font-bold text-green-800">{vehicles.length}</div>
-                <p className="text-xs text-green-600 font-medium">
+                <div className="text-3xl font-bold text-green-800 dark:text-green-200">{vehicles.length}</div>
+                <p className="text-xs text-green-600 dark:text-green-400 font-medium">
               {vehicles.filter((v) => v.status === "available").length}{" "}
               available,{" "}
               {vehicles.filter((v) => v.status === "in-transit").length} in
               transit
             </p>
-                <div className="mt-2 w-full bg-green-200 rounded-full h-2">
-                  <div className="bg-green-500 h-2 rounded-full" style={{width: '75%'}}></div>
+                <div className="mt-2 w-full bg-green-200 dark:bg-green-900/40 rounded-full h-2">
+                  <div className="bg-green-500 dark:bg-green-400 h-2 rounded-full" style={{width: '75%'}}></div>
                 </div>
           </CardContent>
         </Card>
 
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/30 border-blue-200 dark:border-blue-800/50 shadow-lg hover:shadow-xl transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-blue-700">
+                <CardTitle className="text-sm font-medium text-blue-700 dark:text-blue-300">
               Pending Requests
             </CardTitle>
-                <div className="p-2 bg-blue-500 rounded-lg">
+                <div className="p-2 bg-blue-500 dark:bg-blue-600 rounded-lg">
                   <Package className="h-4 w-4 text-white" />
                 </div>
           </CardHeader>
           <CardContent>
-                <div className="text-3xl font-bold text-blue-800">{pendingRequests.length}</div>
-                <p className="text-xs text-blue-600 font-medium">
+                <div className="text-3xl font-bold text-blue-800 dark:text-blue-200">{pendingRequests.length}</div>
+                <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
               {pendingRequests.filter((r) => r.priority === "High").length}{" "}
               urgent,{" "}
               {pendingRequests.filter((r) => r.priority !== "High").length}{" "}
               standard
             </p>
-                <div className="mt-2 w-full bg-blue-200 rounded-full h-2">
-                  <div className="bg-blue-500 h-2 rounded-full" style={{width: '60%'}}></div>
+                <div className="mt-2 w-full bg-blue-200 dark:bg-blue-900/40 rounded-full h-2">
+                  <div className="bg-blue-500 dark:bg-blue-400 h-2 rounded-full" style={{width: '60%'}}></div>
                 </div>
           </CardContent>
         </Card>
 
-            <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200 shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950/50 dark:to-emerald-900/30 border-emerald-200 dark:border-emerald-800/50 shadow-lg hover:shadow-xl transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-emerald-700">EV Fleet %</CardTitle>
-                <div className="p-2 bg-emerald-500 rounded-lg">
+                <CardTitle className="text-sm font-medium text-emerald-700 dark:text-emerald-300">EV Fleet %</CardTitle>
+                <div className="p-2 bg-emerald-500 dark:bg-emerald-600 rounded-lg">
                   <Leaf className="h-4 w-4 text-white" />
                 </div>
           </CardHeader>
           <CardContent>
-                <div className="text-3xl font-bold text-emerald-800">
+                <div className="text-3xl font-bold text-emerald-800 dark:text-emerald-200">
               {Math.round(
                 (vehicles.filter((v) => v.isEV).length / vehicles.length) * 100
               )}
               %
             </div>
-                <p className="text-xs text-emerald-600 font-medium">
+                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
               {vehicles.filter((v) => v.isEV).length} of {vehicles.length}{" "}
               vehicles
             </p>
-                <div className="mt-2 w-full bg-emerald-200 rounded-full h-2">
-                  <div className="bg-emerald-500 h-2 rounded-full" style={{width: '25%'}}></div>
+                <div className="mt-2 w-full bg-emerald-200 dark:bg-emerald-900/40 rounded-full h-2">
+                  <div className="bg-emerald-500 dark:bg-emerald-400 h-2 rounded-full" style={{width: '25%'}}></div>
                 </div>
           </CardContent>
         </Card>
 
-            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/50 dark:to-purple-900/30 border-purple-200 dark:border-purple-800/50 shadow-lg hover:shadow-xl transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-purple-700">Revenue</CardTitle>
-                <div className="p-2 bg-purple-500 rounded-lg">
+                <CardTitle className="text-sm font-medium text-purple-700 dark:text-purple-300">Revenue</CardTitle>
+                <div className="p-2 bg-purple-500 dark:bg-purple-600 rounded-lg">
                   <DollarSign className="h-4 w-4 text-white" />
                 </div>
           </CardHeader>
           <CardContent>
-                <div className="text-3xl font-bold text-purple-800">$45,230</div>
-                <p className="text-xs text-purple-600 font-medium">+12% from last month</p>
-                <div className="mt-2 w-full bg-purple-200 rounded-full h-2">
-                  <div className="bg-purple-500 h-2 rounded-full" style={{width: '85%'}}></div>
+                <div className="text-3xl font-bold text-purple-800 dark:text-purple-200">$45,230</div>
+                <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">+12% from last month</p>
+                <div className="mt-2 w-full bg-purple-200 dark:bg-purple-900/40 rounded-full h-2">
+                  <div className="bg-purple-500 dark:bg-purple-400 h-2 rounded-full" style={{width: '85%'}}></div>
                 </div>
           </CardContent>
         </Card>
       </div>
 
           {/* Enhanced Fleet Tracking */}
-          <Card className="shadow-lg border-0 bg-gradient-to-br from-slate-50 to-white">
-            <CardHeader className="bg-gradient-to-r from-cyan-100 to-blue-100 rounded-t-lg">
-              <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-cyan-600" />
+          <Card className="shadow-lg border-0 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-800/50 dark:border-slate-700">
+            <CardHeader className="bg-gradient-to-r from-cyan-100 to-blue-100 dark:from-cyan-950/50 dark:to-blue-950/50 rounded-t-lg">
+              <CardTitle className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
                 Fleet Tracking
               </CardTitle>
-              <CardDescription className="text-slate-600">Monitor your vehicles in real-time with live updates</CardDescription>
+              <CardDescription className="text-slate-600 dark:text-slate-400">Monitor your vehicles in real-time with live updates</CardDescription>
         </CardHeader>
             <CardContent className="p-6">
           <InteractiveMap
@@ -3017,34 +3270,34 @@ function TransporterDashboard({
       </Card>
 
       {/* Enhanced Fleet Management */}
-          <Card className="shadow-lg border-0 bg-gradient-to-br from-slate-50 to-white">
-            <CardHeader className="bg-gradient-to-r from-indigo-100 to-purple-100 rounded-t-lg">
-              <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <Truck className="h-5 w-5 text-indigo-600" />
+          <Card className="shadow-lg border-0 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-800/50 dark:border-slate-700">
+            <CardHeader className="bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-950/50 dark:to-purple-950/50 rounded-t-lg">
+              <CardTitle className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <Truck className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                 Fleet Management
               </CardTitle>
-              <CardDescription className="text-slate-600">Monitor and manage your vehicle fleet with comprehensive controls</CardDescription>
+              <CardDescription className="text-slate-600 dark:text-slate-400">Monitor and manage your vehicle fleet with comprehensive controls</CardDescription>
         </CardHeader>
             <CardContent className="p-6">
           <Tabs defaultValue="vehicles" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 bg-gradient-to-r from-slate-100 to-slate-200 p-1 rounded-lg">
+                <TabsList className="grid w-full grid-cols-3 bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 p-1 rounded-lg dark:border dark:border-slate-700">
                   <TabsTrigger 
                     value="vehicles" 
-                    className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-indigo-600 font-semibold transition-all duration-200"
+                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-400 dark:text-slate-300 font-semibold transition-all duration-200"
                   >
                     <Truck className="h-4 w-4 mr-2" />
                     Vehicles
                   </TabsTrigger>
                   <TabsTrigger 
                     value="requests" 
-                    className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 font-semibold transition-all duration-200"
+                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 dark:text-slate-300 font-semibold transition-all duration-200"
                   >
                     <Package className="h-4 w-4 mr-2" />
                     Requests
                   </TabsTrigger>
                   <TabsTrigger 
                     value="shipments" 
-                    className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-purple-600 font-semibold transition-all duration-200"
+                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400 dark:text-slate-300 font-semibold transition-all duration-200"
                   >
                     <BarChart3 className="h-4 w-4 mr-2" />
                     Active Shipments
@@ -3330,7 +3583,7 @@ function TransporterDashboard({
       </Card>
 
       {/* Analytics Section */}
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Performance Analytics</CardTitle>
@@ -3431,13 +3684,13 @@ function TransporterDashboard({
       </div>
 
           {/* Enhanced Analytics Section */}
-          <Card className="shadow-lg border-0 bg-gradient-to-br from-slate-50 to-white">
-            <CardHeader className="bg-gradient-to-r from-slate-100 to-slate-200 rounded-t-lg">
-              <CardTitle className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                <BarChart3 className="h-6 w-6 text-slate-600" />
+          <Card className="shadow-lg border-0 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-800/50 dark:border-slate-700">
+            <CardHeader className="bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 rounded-t-lg">
+              <CardTitle className="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <BarChart3 className="h-6 w-6 text-slate-600 dark:text-slate-400" />
                 Fleet Analytics & Performance
               </CardTitle>
-              <CardDescription className="text-slate-600 text-lg">
+              <CardDescription className="text-slate-600 dark:text-slate-400 text-lg">
             Detailed insights into fleet operations and sustainability
           </CardDescription>
         </CardHeader>
@@ -3449,36 +3702,36 @@ function TransporterDashboard({
 
         <TabsContent value="fleet" className="space-y-6">
           {/* Fleet Management Tab */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-blue-50 to-blue-100 hover:shadow-xl transition-all duration-300">
-              <CardHeader className="bg-gradient-to-r from-blue-100 to-blue-200 rounded-t-lg">
-                <CardTitle className="text-lg font-bold text-blue-800 flex items-center gap-2">
-                  <Truck className="h-5 w-5 text-blue-600" />
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/30 dark:border-blue-800/50 hover:shadow-xl transition-all duration-300">
+              <CardHeader className="bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-950/50 dark:to-blue-900/50 rounded-t-lg">
+                <CardTitle className="text-lg font-bold text-blue-800 dark:text-blue-200 flex items-center gap-2">
+                  <Truck className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   Vehicle Status
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-blue-700 font-medium">Available</span>
-                    <Badge className="bg-green-100 text-green-800">{vehicles.filter(v => v.status === "available").length}</Badge>
+                    <span className="text-blue-700 dark:text-blue-400 font-medium">Available</span>
+                    <Badge className="bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300">{vehicles.filter(v => v.status === "available").length}</Badge>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-blue-700 font-medium">In Transit</span>
-                    <Badge className="bg-blue-100 text-blue-800">{vehicles.filter(v => v.status === "in-transit").length}</Badge>
+                    <span className="text-blue-700 dark:text-blue-400 font-medium">In Transit</span>
+                    <Badge className="bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300">{vehicles.filter(v => v.status === "in-transit").length}</Badge>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-blue-700 font-medium">Maintenance</span>
-                    <Badge className="bg-red-100 text-red-800">{vehicles.filter(v => v.status === "maintenance").length}</Badge>
+                    <span className="text-blue-700 dark:text-blue-400 font-medium">Maintenance</span>
+                    <Badge className="bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300">{vehicles.filter(v => v.status === "maintenance").length}</Badge>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-green-50 to-green-100 hover:shadow-xl transition-all duration-300">
-              <CardHeader className="bg-gradient-to-r from-green-100 to-green-200 rounded-t-lg">
-                <CardTitle className="text-lg font-bold text-green-800 flex items-center gap-2">
-                  <Leaf className="h-5 w-5 text-green-600" />
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/50 dark:to-green-900/30 dark:border-green-800/50 hover:shadow-xl transition-all duration-300">
+              <CardHeader className="bg-gradient-to-r from-green-100 to-green-200 dark:from-green-950/50 dark:to-green-900/50 rounded-t-lg">
+                <CardTitle className="text-lg font-bold text-green-800 dark:text-green-200 flex items-center gap-2">
+                  <Leaf className="h-5 w-5 text-green-600 dark:text-green-400" />
                   EV Fleet
                 </CardTitle>
               </CardHeader>
@@ -3495,18 +3748,18 @@ function TransporterDashboard({
               </CardContent>
             </Card>
 
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-purple-50 to-purple-100 hover:shadow-xl transition-all duration-300">
-              <CardHeader className="bg-gradient-to-r from-purple-100 to-purple-200 rounded-t-lg">
-                <CardTitle className="text-lg font-bold text-purple-800 flex items-center gap-2">
-                  <Users className="h-5 w-5 text-purple-600" />
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/50 dark:to-purple-900/30 dark:border-purple-800/50 hover:shadow-xl transition-all duration-300">
+              <CardHeader className="bg-gradient-to-r from-purple-100 to-purple-200 dark:from-purple-950/50 dark:to-purple-900/50 rounded-t-lg">
+                <CardTitle className="text-lg font-bold text-purple-800 dark:text-purple-200 flex items-center gap-2">
+                  <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                   Drivers
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-purple-800 mb-2">{vehicles.length}</div>
-                  <div className="text-sm text-purple-600 mb-4">Active Drivers</div>
-                  <Button size="sm" className="w-full bg-purple-600 hover:bg-purple-700 text-white">
+                  <div className="text-3xl font-bold text-purple-800 dark:text-purple-200 mb-2">{vehicles.length}</div>
+                  <div className="text-sm text-purple-600 dark:text-purple-400 mb-4">Active Drivers</div>
+                  <Button size="sm" className="w-full bg-purple-600 hover:bg-purple-700 dark:bg-purple-800/50 dark:hover:bg-purple-900/50 text-white">
                     <Users className="h-4 w-4 mr-2" />
                     Manage Drivers
                   </Button>
@@ -3519,27 +3772,27 @@ function TransporterDashboard({
         <TabsContent value="shipments" className="space-y-6">
           {/* Shipments Management Tab */}
           <div className="grid gap-6">
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-orange-50 to-red-50">
-              <CardHeader className="bg-gradient-to-r from-orange-100 to-red-100 rounded-t-lg">
-                <CardTitle className="text-xl font-bold text-orange-800 flex items-center gap-2">
-                  <Package className="h-5 w-5 text-orange-600" />
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/50 dark:to-red-950/30 dark:border-orange-800/50">
+              <CardHeader className="bg-gradient-to-r from-orange-100 to-red-100 dark:from-orange-950/50 dark:to-red-950/50 rounded-t-lg">
+                <CardTitle className="text-xl font-bold text-orange-800 dark:text-orange-200 flex items-center gap-2">
+                  <Package className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                   Active Shipments
                 </CardTitle>
-                <CardDescription className="text-orange-600">Manage your current delivery assignments</CardDescription>
+                <CardDescription className="text-orange-600 dark:text-slate-400">Manage your current delivery assignments</CardDescription>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="space-y-4">
                   {activeShipments.map((shipment) => (
-                    <div key={shipment.id} className="p-4 bg-white rounded-lg border border-orange-200 shadow-sm">
+                    <div key={shipment.id} className="p-4 bg-white dark:bg-slate-800/50 rounded-lg border border-orange-200 dark:border-orange-800/50 shadow-sm">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
-                          <div className="p-2 bg-orange-100 rounded-lg">
-                            <Package className="h-4 w-4 text-orange-600" />
+                          <div className="p-2 bg-orange-100 dark:bg-orange-900/50 rounded-lg">
+                            <Package className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                           </div>
                           <div>
-                            <div className="font-semibold text-orange-800">{shipment.id}</div>
-                            <div className="text-sm text-orange-600">{shipment.supplier}</div>
-                            <div className="text-xs text-orange-500">{shipment.route}</div>
+                            <div className="font-semibold text-orange-800 dark:text-orange-300">{shipment.id}</div>
+                            <div className="text-sm text-orange-600 dark:text-orange-400">{shipment.supplier}</div>
+                            <div className="text-xs text-orange-500 dark:text-orange-400">{shipment.route}</div>
                           </div>
                         </div>
                         <Badge 
@@ -3548,9 +3801,9 @@ function TransporterDashboard({
                             shipment.status === "in-transit" ? "secondary" : "outline"
                           }
                           className={
-                            shipment.status === "delivered" ? "bg-green-100 text-green-800" :
-                            shipment.status === "in-transit" ? "bg-blue-100 text-blue-800" : 
-                            "bg-yellow-100 text-yellow-800"
+                            shipment.status === "delivered" ? "bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300" :
+                            shipment.status === "in-transit" ? "bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300" : 
+                            "bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300"
                           }
                         >
                           {shipment.status.replace("-", " ").toUpperCase()}
@@ -3558,7 +3811,7 @@ function TransporterDashboard({
                       </div>
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span className="text-orange-600">Progress</span>
+                          <span className="text-orange-600 dark:text-orange-400">Progress</span>
                           <span className="text-orange-800 font-medium">{shipment.progress}% • ETA: {shipment.eta}</span>
                         </div>
                         <div className="w-full bg-orange-200 rounded-full h-2">
@@ -3575,43 +3828,43 @@ function TransporterDashboard({
 
         <TabsContent value="analytics" className="space-y-6">
           {/* Analytics Tab */}
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-cyan-50 to-blue-50">
-              <CardHeader className="bg-gradient-to-r from-cyan-100 to-blue-100 rounded-t-lg">
-                <CardTitle className="text-xl font-bold text-cyan-800 flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-cyan-600" />
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-950/50 dark:to-blue-950/30 dark:border-cyan-800/50">
+              <CardHeader className="bg-gradient-to-r from-cyan-100 to-blue-100 dark:from-cyan-950/50 dark:to-blue-950/50 rounded-t-lg">
+                <CardTitle className="text-xl font-bold text-cyan-800 dark:text-cyan-200 flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
                   Performance Metrics
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <span className="text-cyan-700 font-medium">Deliveries Completed</span>
-                    <span className="text-cyan-800 font-bold text-xl">156</span>
+                    <span className="text-cyan-700 dark:text-slate-300 font-medium">Deliveries Completed</span>
+                    <span className="text-cyan-800 dark:text-cyan-200 font-bold text-xl">156</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-cyan-700 font-medium">On-Time Rate</span>
-                    <span className="text-cyan-800 font-bold text-xl">92.4%</span>
+                    <span className="text-cyan-700 dark:text-slate-300 font-medium">On-Time Rate</span>
+                    <span className="text-cyan-800 dark:text-cyan-200 font-bold text-xl">92.4%</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-cyan-700 font-medium">Customer Rating</span>
-                    <span className="text-cyan-800 font-bold text-xl">4.7/5.0</span>
+                    <span className="text-cyan-700 dark:text-slate-300 font-medium">Customer Rating</span>
+                    <span className="text-cyan-800 dark:text-cyan-200 font-bold text-xl">4.7/5.0</span>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-emerald-50 to-green-50">
-              <CardHeader className="bg-gradient-to-r from-emerald-100 to-green-100 rounded-t-lg">
-                <CardTitle className="text-xl font-bold text-emerald-800 flex items-center gap-2">
-                  <Leaf className="h-5 w-5 text-emerald-600" />
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-950/50 dark:to-green-950/30 dark:border-emerald-800/50">
+              <CardHeader className="bg-gradient-to-r from-emerald-100 to-green-100 dark:from-emerald-950/50 dark:to-green-950/50 rounded-t-lg">
+                <CardTitle className="text-xl font-bold text-emerald-800 dark:text-emerald-200 flex items-center gap-2">
+                  <Leaf className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                   Sustainability Score
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="text-center mb-4">
-                  <div className="text-4xl font-bold text-emerald-800 mb-2">B+</div>
-                  <div className="text-sm text-emerald-600">Overall Sustainability Grade</div>
+                  <div className="text-4xl font-bold text-emerald-800 dark:text-emerald-200 mb-2">B+</div>
+                  <div className="text-sm text-emerald-600 dark:text-emerald-400">Overall Sustainability Grade</div>
                 </div>
                 <div className="space-y-3">
                   <div>
@@ -3637,13 +3890,13 @@ function TransporterDashboard({
             </Card>
           </div>
 
-          <Card className="shadow-lg border-0 bg-gradient-to-br from-slate-50 to-white">
-            <CardHeader className="bg-gradient-to-r from-slate-100 to-slate-200 rounded-t-lg">
-              <CardTitle className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                <BarChart3 className="h-6 w-6 text-slate-600" />
+          <Card className="shadow-lg border-0 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-800/50 dark:border-slate-700">
+            <CardHeader className="bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 rounded-t-lg">
+              <CardTitle className="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <BarChart3 className="h-6 w-6 text-slate-600 dark:text-slate-400" />
                 Detailed Analytics
               </CardTitle>
-              <CardDescription className="text-slate-600 text-lg">
+              <CardDescription className="text-slate-600 dark:text-slate-400 text-lg">
                 Comprehensive performance insights and business intelligence
               </CardDescription>
             </CardHeader>
@@ -3796,7 +4049,8 @@ function CustomerDashboard({
   onRatingSubmit, 
   onNewOrder,
   shipments = [],
-  suppliers = []
+  suppliers = [],
+  onAIInsights
 }: {
   onRatingSubmit: (id: string, rating: number, feedback: string) => void;
   onNewOrder: () => void;
@@ -3814,6 +4068,7 @@ function CustomerDashboard({
     totalOrders: number;
     onTimeRate: number;
   }>;
+  onAIInsights: (message: string, context?: any) => void;
 }) {
   const [showTrackShipment, setShowTrackShipment] = useState(false);
   const [selectedShipment, setSelectedShipment] = useState<any>(null);
@@ -4002,36 +4257,36 @@ function CustomerDashboard({
   return (
     <div className="space-y-6">
       {/* Enhanced Header with Gradient Background */}
-      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-rose-700 p-8 text-white">
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-rose-700 p-4 sm:p-6 md:p-8 text-white">
         <div className="absolute inset-0 bg-black/20"></div>
         <div className="relative z-10">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-4xl font-bold mb-2">Customer Dashboard</h1>
-              <p className="text-purple-100 text-lg">Track your deliveries and manage your shipping preferences</p>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 dark:text-white">Customer Dashboard</h1>
+              <p className="text-purple-100 dark:text-slate-300 text-sm sm:text-base md:text-lg">Track your deliveries and manage your shipping preferences</p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               <Button 
                 onClick={onNewOrder}
-                className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm transition-all duration-200 hover:scale-105"
+                className="bg-white/20 hover:bg-white/30 dark:bg-white/10 dark:hover:bg-white/20 text-white border-white/30 backdrop-blur-sm transition-all duration-200 hover:scale-105 text-sm sm:text-base"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                New Order
+                <span className="hidden sm:inline">New </span>Order
               </Button>
               <Button 
                 onClick={() => setShowTrackShipment(true)}
-                className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm transition-all duration-200 hover:scale-105"
+                className="bg-white/20 hover:bg-white/30 dark:bg-white/10 dark:hover:bg-white/20 text-white border-white/30 backdrop-blur-sm transition-all duration-200 hover:scale-105 text-sm sm:text-base"
               >
               <MapPin className="h-4 w-4 mr-2" />
-              Track Shipment
+              Track<span className="hidden sm:inline"> Shipment</span>
             </Button>
               <Button 
                 variant="outline" 
                 onClick={() => setShowAnalytics(!showAnalytics)}
-                className="bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-sm"
+                className="bg-white/10 hover:bg-white/20 dark:bg-white/5 dark:hover:bg-white/15 text-white border-white/30 backdrop-blur-sm text-sm sm:text-base"
               >
                 <BarChart3 className="h-4 w-4 mr-2" />
-                Analytics
+                <span className="hidden sm:inline">Analytics</span>
               </Button>
             </div>
           </div>
@@ -4042,31 +4297,31 @@ function CustomerDashboard({
 
       {/* Enhanced Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-6 bg-gradient-to-r from-slate-50 to-slate-100 p-1 rounded-lg">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 mb-6 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 p-1 rounded-lg border dark:border-slate-700 gap-1">
           <TabsTrigger 
             value="overview" 
-            className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-purple-600 font-semibold transition-all duration-200"
+            className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
           >
-            <Package className="h-4 w-4 mr-2" />
-            Overview
+            <Package className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            <span className="hidden xs:inline">Overview</span>
           </TabsTrigger>
           <TabsTrigger 
             value="tracking" 
-            className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 font-semibold transition-all duration-200"
+            className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
           >
-            <MapPin className="h-4 w-4 mr-2" />
-            Tracking
+            <MapPin className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            <span className="hidden xs:inline">Tracking</span>
           </TabsTrigger>
           <TabsTrigger 
             value="preferences" 
-            className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-green-600 font-semibold transition-all duration-200"
+            className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-green-600 dark:data-[state=active]:text-green-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
           >
-            <Leaf className="h-4 w-4 mr-2" />
+            <Leaf className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
             Preferences
           </TabsTrigger>
           <TabsTrigger 
             value="analytics" 
-            className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-orange-600 font-semibold transition-all duration-200"
+            className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 dark:text-slate-300 font-semibold transition-all duration-200"
           >
             <BarChart3 className="h-4 w-4 mr-2" />
             Analytics
@@ -4076,112 +4331,112 @@ function CustomerDashboard({
         <TabsContent value="overview" className="space-y-6">
 
           {/* Enhanced Stats Cards */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 shadow-lg hover:shadow-xl transition-all duration-300">
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/50 dark:to-purple-900/30 border-purple-200 dark:border-purple-800/50 shadow-lg hover:shadow-xl transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-purple-700">
+                <CardTitle className="text-sm font-medium text-purple-700 dark:text-purple-300">
               Incoming Shipments
             </CardTitle>
-                <div className="p-2 bg-purple-500 rounded-lg">
+                <div className="p-2 bg-purple-500 dark:bg-purple-600 rounded-lg">
                   <Package className="h-4 w-4 text-white" />
                 </div>
           </CardHeader>
           <CardContent>
-                <div className="text-3xl font-bold text-purple-800">{incomingShipments.length}</div>
-                <p className="text-xs text-purple-600 font-medium">
+                <div className="text-3xl font-bold text-purple-800 dark:text-purple-200">{incomingShipments.length}</div>
+                <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">
               {
                 incomingShipments.filter((s) => s.status === "in-transit")
                   .length
               }{" "}
               in transit
             </p>
-                <div className="mt-2 w-full bg-purple-200 rounded-full h-2">
-                  <div className="bg-purple-500 h-2 rounded-full" style={{width: '75%'}}></div>
+                <div className="mt-2 w-full bg-purple-200 dark:bg-purple-900/40 rounded-full h-2">
+                  <div className="bg-purple-500 dark:bg-purple-400 h-2 rounded-full" style={{width: '75%'}}></div>
                 </div>
           </CardContent>
         </Card>
 
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/30 border-blue-200 dark:border-blue-800/50 shadow-lg hover:shadow-xl transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-blue-700">
+                <CardTitle className="text-sm font-medium text-blue-700 dark:text-blue-300">
               Avg Delivery Time
             </CardTitle>
-                <div className="p-2 bg-blue-500 rounded-lg">
+                <div className="p-2 bg-blue-500 dark:bg-blue-600 rounded-lg">
                   <BarChart3 className="h-4 w-4 text-white" />
                 </div>
           </CardHeader>
           <CardContent>
-                <div className="text-3xl font-bold text-blue-800">3.2 days</div>
-                <p className="text-xs text-blue-600 font-medium">
+                <div className="text-3xl font-bold text-blue-800 dark:text-blue-200">3.2 days</div>
+                <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
               -0.5 days improvement
             </p>
-                <div className="mt-2 w-full bg-blue-200 rounded-full h-2">
-                  <div className="bg-blue-500 h-2 rounded-full" style={{width: '80%'}}></div>
+                <div className="mt-2 w-full bg-blue-200 dark:bg-blue-900/40 rounded-full h-2">
+                  <div className="bg-blue-500 dark:bg-blue-400 h-2 rounded-full" style={{width: '80%'}}></div>
                 </div>
           </CardContent>
         </Card>
 
-            <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/50 dark:to-green-900/30 border-green-200 dark:border-green-800/50 shadow-lg hover:shadow-xl transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-green-700">
+                <CardTitle className="text-sm font-medium text-green-700 dark:text-green-300">
               Eco Deliveries
             </CardTitle>
-                <div className="p-2 bg-green-500 rounded-lg">
+                <div className="p-2 bg-green-500 dark:bg-green-600 rounded-lg">
                   <Leaf className="h-4 w-4 text-white" />
                 </div>
           </CardHeader>
           <CardContent>
-                <div className="text-3xl font-bold text-green-800">{ecoDeliveryPercentage}%</div>
-                <p className="text-xs text-green-600 font-medium">
+                <div className="text-3xl font-bold text-green-800 dark:text-green-200">{ecoDeliveryPercentage}%</div>
+                <p className="text-xs text-green-600 dark:text-green-400 font-medium">
               {ecoDeliveryPercentage >= 70
                 ? "Green badge earned!"
                 : "Keep going for green badge!"}
             </p>
-                <div className="mt-2 w-full bg-green-200 rounded-full h-2">
-                  <div className="bg-green-500 h-2 rounded-full" style={{width: `${ecoDeliveryPercentage}%`}}></div>
+                <div className="mt-2 w-full bg-green-200 dark:bg-green-900/40 rounded-full h-2">
+                  <div className="bg-green-500 dark:bg-green-400 h-2 rounded-full" style={{width: `${ecoDeliveryPercentage}%`}}></div>
                 </div>
           </CardContent>
         </Card>
 
-            <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950/50 dark:to-orange-900/30 border-orange-200 dark:border-orange-800/50 shadow-lg hover:shadow-xl transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-orange-700">
+                <CardTitle className="text-sm font-medium text-orange-700 dark:text-orange-300">
               Supplier Rating
             </CardTitle>
-                <div className="p-2 bg-orange-500 rounded-lg">
+                <div className="p-2 bg-orange-500 dark:bg-orange-600 rounded-lg">
                   <Users className="h-4 w-4 text-white" />
                 </div>
           </CardHeader>
           <CardContent>
-                <div className="text-3xl font-bold text-orange-800">4.7/5</div>
-                <p className="text-xs text-orange-600 font-medium">Excellent service</p>
-                <div className="mt-2 w-full bg-orange-200 rounded-full h-2">
-                  <div className="bg-orange-500 h-2 rounded-full" style={{width: '94%'}}></div>
+                <div className="text-3xl font-bold text-orange-800 dark:text-orange-200">4.7/5</div>
+                <p className="text-xs text-orange-600 dark:text-orange-400 font-medium">Excellent service</p>
+                <div className="mt-2 w-full bg-orange-200 dark:bg-orange-900/40 rounded-full h-2">
+                  <div className="bg-orange-500 dark:bg-orange-400 h-2 rounded-full" style={{width: '94%'}}></div>
                 </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Enhanced Live Tracking */}
-      <Card>
+      <Card className="dark:bg-slate-900/50 dark:border-slate-800">
         <CardHeader>
-          <CardTitle>Live Shipment Tracking</CardTitle>
-          <CardDescription>
+          <CardTitle className="dark:text-white">Live Shipment Tracking</CardTitle>
+          <CardDescription className="dark:text-slate-400">
             Monitor your shipments with real-time updates and interactive maps
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="active" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="active">Active Shipments</TabsTrigger>
-              <TabsTrigger value="completed">Completed Orders</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 dark:bg-slate-800">
+              <TabsTrigger value="active" className="dark:data-[state=active]:bg-slate-700 dark:text-slate-300">Active Shipments</TabsTrigger>
+              <TabsTrigger value="completed" className="dark:data-[state=active]:bg-slate-700 dark:text-slate-300">Completed Orders</TabsTrigger>
             </TabsList>
 
             <TabsContent value="active" className="space-y-4">
               {incomingShipments.map((shipment) => (
                 <div
                   key={shipment.id}
-                  className="p-4 border rounded-lg space-y-4"
+                  className="p-4 border dark:border-slate-700 dark:bg-slate-800/50 rounded-lg space-y-4"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -4320,6 +4575,12 @@ function CustomerDashboard({
                     <Button size="sm" variant="outline">
                       Contact Supplier
                     </Button>
+                    <AIInsightsButton
+                      message={`What's the status of my order ${shipment.id}? When will it arrive and are there any delivery issues I should know about?`}
+                      context={{ shipmentId: shipment.id, shipment }}
+                      onClick={onAIInsights}
+                      size="sm"
+                    />
                   </div>
                 </div>
               ))}
@@ -4408,7 +4669,7 @@ function CustomerDashboard({
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
         {/* Enhanced Delivery Preferences */}
         <Card>
           <CardHeader>
@@ -4542,7 +4803,7 @@ function CustomerDashboard({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             <div className="text-center">
               <div className="text-3xl font-bold text-primary mb-2">
                 {ecoDeliveryPercentage >= 70
@@ -4611,13 +4872,13 @@ function CustomerDashboard({
       </Card>
 
           {/* Enhanced Analytics Section */}
-          <Card className="shadow-lg border-0 bg-gradient-to-br from-slate-50 to-white">
-            <CardHeader className="bg-gradient-to-r from-slate-100 to-slate-200 rounded-t-lg">
-              <CardTitle className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                <BarChart3 className="h-6 w-6 text-slate-600" />
+          <Card className="shadow-lg border-0 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-800/50 dark:border-slate-700">
+            <CardHeader className="bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 rounded-t-lg">
+              <CardTitle className="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <BarChart3 className="h-6 w-6 text-slate-600 dark:text-slate-400" />
                 Delivery Analytics & Sustainability
               </CardTitle>
-              <CardDescription className="text-slate-600 text-lg">
+              <CardDescription className="text-slate-600 dark:text-slate-400 text-lg">
             Track your delivery patterns and environmental impact
           </CardDescription>
         </CardHeader>
@@ -4629,27 +4890,27 @@ function CustomerDashboard({
 
         <TabsContent value="tracking" className="space-y-6">
           {/* Enhanced Live Tracking Tab */}
-          <Card className="shadow-lg border-0 bg-gradient-to-br from-blue-50 to-cyan-50">
-            <CardHeader className="bg-gradient-to-r from-blue-100 to-cyan-100 rounded-t-lg">
-              <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-blue-600" />
+          <Card className="shadow-lg border-0 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30 dark:border-slate-700">
+            <CardHeader className="bg-gradient-to-r from-blue-100 to-cyan-100 dark:from-blue-900/50 dark:to-cyan-900/50 rounded-t-lg">
+              <CardTitle className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 Live Shipment Tracking
               </CardTitle>
-              <CardDescription className="text-slate-600">Monitor your shipments with real-time updates and interactive maps</CardDescription>
+              <CardDescription className="text-slate-600 dark:text-slate-400">Monitor your shipments with real-time updates and interactive maps</CardDescription>
             </CardHeader>
             <CardContent className="p-6">
               <Tabs defaultValue="active" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 bg-gradient-to-r from-slate-100 to-slate-200 p-1 rounded-lg">
+                <TabsList className="grid w-full grid-cols-2 bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 p-1 rounded-lg">
                   <TabsTrigger 
                     value="active" 
-                    className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 font-semibold transition-all duration-200"
+                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 dark:text-slate-300 font-semibold transition-all duration-200"
                   >
                     <Package className="h-4 w-4 mr-2" />
                     Active Shipments
                   </TabsTrigger>
                   <TabsTrigger 
                     value="completed" 
-                    className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-green-600 font-semibold transition-all duration-200"
+                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-green-600 dark:data-[state=active]:text-green-400 dark:text-slate-300 font-semibold transition-all duration-200"
                   >
                     <CheckCircle className="h-4 w-4 mr-2" />
                     Completed Orders
@@ -4660,21 +4921,21 @@ function CustomerDashboard({
                   {incomingShipments.map((shipment) => (
                     <div
                       key={shipment.id}
-                      className="p-6 border rounded-xl bg-white shadow-sm hover:shadow-lg transition-all duration-300 space-y-4"
+                      className="p-6 border dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800/50 shadow-sm hover:shadow-lg transition-all duration-300 space-y-4"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                           <div className={`p-3 rounded-xl ${
-                            shipment.deliveryType === 'eco' ? 'bg-green-100' : 'bg-blue-100'
+                            shipment.deliveryType === 'eco' ? 'bg-green-100 dark:bg-green-900/30' : 'bg-blue-100 dark:bg-blue-900/30'
                           }`}>
                             <Package className={`h-5 w-5 ${
-                              shipment.deliveryType === 'eco' ? 'text-green-600' : 'text-blue-600'
+                              shipment.deliveryType === 'eco' ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400'
                             }`} />
                           </div>
                           <div>
-                            <div className="font-bold text-lg text-slate-800">{shipment.id}</div>
-                            <div className="text-sm text-slate-600 font-medium">{shipment.supplier}</div>
-                            <div className="text-xs text-slate-500">{shipment.route}</div>
+                            <div className="font-bold text-lg text-slate-800 dark:text-slate-200">{shipment.id}</div>
+                            <div className="text-sm text-slate-600 dark:text-slate-400 font-medium">{shipment.supplier}</div>
+                            <div className="text-xs text-slate-500 dark:text-slate-500">{shipment.route}</div>
                           </div>
                           <Badge
                             variant={
@@ -4682,9 +4943,9 @@ function CustomerDashboard({
                               shipment.status === "dispatched" ? "outline" : "outline"
                             }
                             className={
-                              shipment.status === "in-transit" ? "bg-blue-100 text-blue-800" :
-                              shipment.status === "dispatched" ? "bg-yellow-100 text-yellow-800" : 
-                              "bg-gray-100 text-gray-800"
+                              shipment.status === "in-transit" ? "bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300" :
+                              shipment.status === "dispatched" ? "bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300" : 
+                              "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300"
                             }
                           >
                             {shipment.status.replace("-", " ").toUpperCase()}
@@ -4693,8 +4954,8 @@ function CustomerDashboard({
                             variant="outline"
                             className={
                               shipment.deliveryType === "eco"
-                                ? "text-green-600 border-green-300 bg-green-50"
-                                : "text-blue-600 border-blue-300 bg-blue-50"
+                                ? "text-green-600 dark:text-green-400 border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/30"
+                                : "text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30"
                             }
                           >
                             <Leaf className="h-3 w-3 mr-1" />
@@ -4702,7 +4963,7 @@ function CustomerDashboard({
                           </Badge>
                         </div>
                         <div className="text-right">
-                          <div className="text-lg font-bold text-slate-800">
+                          <div className="text-lg font-bold text-slate-800 dark:text-slate-200">
                             ETA: {shipment.eta}
                           </div>
                           <div className="text-xs text-slate-500">
@@ -4828,14 +5089,14 @@ function CustomerDashboard({
 
         <TabsContent value="preferences" className="space-y-6">
           {/* Enhanced Delivery Preferences */}
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-green-50 to-emerald-50">
-              <CardHeader className="bg-gradient-to-r from-green-100 to-emerald-100 rounded-t-lg">
-                <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                  <Leaf className="h-5 w-5 text-green-600" />
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/50 dark:to-emerald-950/30 dark:border-green-800/50">
+              <CardHeader className="bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-950/50 dark:to-emerald-950/50 rounded-t-lg">
+                <CardTitle className="text-xl font-bold text-slate-800 dark:text-green-200 flex items-center gap-2">
+                  <Leaf className="h-5 w-5 text-green-600 dark:text-green-400" />
                   Delivery Preferences
                 </CardTitle>
-                <CardDescription className="text-slate-600">Set your default delivery preferences for future orders</CardDescription>
+                <CardDescription className="text-slate-600 dark:text-slate-400">Set your default delivery preferences for future orders</CardDescription>
               </CardHeader>
               <CardContent className="p-6">
                 <Tabs
@@ -4843,64 +5104,64 @@ function CustomerDashboard({
                   onValueChange={setDeliveryPreference}
                   className="w-full"
                 >
-                  <TabsList className="grid w-full grid-cols-2 bg-gradient-to-r from-slate-100 to-slate-200 p-1 rounded-lg">
+                  <TabsList className="grid w-full grid-cols-2 bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 p-1 rounded-lg">
                     <TabsTrigger 
                       value="fast" 
-                      className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 font-semibold transition-all duration-200"
+                      className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-600 data-[state=active]:shadow-md data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 dark:text-slate-300 font-semibold transition-all duration-200"
                     >
                       <Zap className="h-4 w-4 mr-2" />
                       Fast Delivery
                     </TabsTrigger>
                     <TabsTrigger 
                       value="eco" 
-                      className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-green-600 font-semibold transition-all duration-200"
+                      className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-600 data-[state=active]:shadow-md data-[state=active]:text-green-600 dark:data-[state=active]:text-green-400 dark:text-slate-300 font-semibold transition-all duration-200"
                     >
                       <Leaf className="h-4 w-4 mr-2" />
                       Eco Delivery
                     </TabsTrigger>
                   </TabsList>
                   <TabsContent value="fast" className="space-y-4 mt-4">
-                    <div className="text-sm text-slate-600">Priority shipping with faster delivery times</div>
-                    <div className="space-y-2">
+                    <div className="text-sm text-slate-600 dark:text-slate-400">Priority shipping with faster delivery times</div>
+                    <div className="space-y-2 dark:text-slate-300">
                       <div className="flex justify-between">
                         <span>Delivery Time:</span>
                         <span className="font-medium">1-2 days</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Carbon Impact:</span>
-                        <span className="text-red-600">Higher</span>
+                        <span className="text-red-600 dark:text-red-400">Higher</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Cost:</span>
                         <span className="font-medium">Premium (+15-25%)</span>
                       </div>
                     </div>
-                    <Alert className="border-red-200 bg-red-50">
-                      <AlertTriangle className="h-4 w-4 text-red-500" />
-                      <AlertDescription className="text-red-700">
+                    <Alert className="border-red-200 bg-red-50 dark:border-red-800/50 dark:bg-red-900/20">
+                      <AlertTriangle className="h-4 w-4 text-red-500 dark:text-red-400" />
+                      <AlertDescription className="text-red-700 dark:text-red-300">
                         Fast delivery may impact your sustainability score
                       </AlertDescription>
                     </Alert>
                   </TabsContent>
                   <TabsContent value="eco" className="space-y-4 mt-4">
-                    <div className="text-sm text-slate-600">Environmentally friendly shipping options</div>
-                    <div className="space-y-2">
+                    <div className="text-sm text-slate-600 dark:text-slate-400">Environmentally friendly shipping options</div>
+                    <div className="space-y-2 dark:text-slate-300">
                       <div className="flex justify-between">
                         <span>Delivery Time:</span>
                         <span className="font-medium">3-5 days</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Carbon Impact:</span>
-                        <span className="text-green-600">Lower (-60%)</span>
+                        <span className="text-green-600 dark:text-green-400">Lower (-60%)</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Cost:</span>
                         <span className="font-medium">Standard</span>
                       </div>
                     </div>
-                    <Alert className="border-green-200 bg-green-50">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                      <AlertDescription className="text-green-700">
+                    <Alert className="border-green-200 bg-green-50 dark:border-green-800/50 dark:bg-green-900/20">
+                      <CheckCircle className="h-4 w-4 text-green-500 dark:text-green-400" />
+                      <AlertDescription className="text-green-700 dark:text-green-300">
                         Eco delivery helps you earn green badges and reduces environmental impact
                       </AlertDescription>
                     </Alert>
@@ -4915,13 +5176,13 @@ function CustomerDashboard({
               </CardContent>
             </Card>
 
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-blue-50 to-indigo-50">
-              <CardHeader className="bg-gradient-to-r from-blue-100 to-indigo-100 rounded-t-lg">
-                <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                  <Users className="h-5 w-5 text-blue-600" />
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/30 dark:border-blue-800/50">
+              <CardHeader className="bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-950/50 dark:to-indigo-950/50 rounded-t-lg">
+                <CardTitle className="text-xl font-bold text-slate-800 dark:text-blue-200 flex items-center gap-2">
+                  <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   Supplier Performance
                 </CardTitle>
-                <CardDescription className="text-slate-600">Track reliability and service quality of your suppliers</CardDescription>
+                <CardDescription className="text-slate-600 dark:text-slate-400">Track reliability and service quality of your suppliers</CardDescription>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="space-y-4">
@@ -4967,66 +5228,66 @@ function CustomerDashboard({
 
         <TabsContent value="analytics" className="space-y-6">
           {/* Analytics Tab */}
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-purple-50 to-pink-50">
-              <CardHeader className="bg-gradient-to-r from-purple-100 to-pink-100 rounded-t-lg">
-                <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-purple-600" />
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/50 dark:to-pink-950/30 dark:border-purple-800/50">
+              <CardHeader className="bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-950/50 dark:to-pink-950/50 rounded-t-lg">
+                <CardTitle className="text-xl font-bold text-slate-800 dark:text-purple-200 flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                   Delivery Analytics
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <span className="text-purple-700 font-medium">Total Deliveries</span>
-                    <span className="text-purple-800 font-bold text-xl">24</span>
+                    <span className="text-purple-700 dark:text-slate-300 font-medium">Total Deliveries</span>
+                    <span className="text-purple-800 dark:text-purple-200 font-bold text-xl">24</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-purple-700 font-medium">On-Time Rate</span>
-                    <span className="text-purple-800 font-bold text-xl">92%</span>
+                    <span className="text-purple-700 dark:text-slate-300 font-medium">On-Time Rate</span>
+                    <span className="text-purple-800 dark:text-purple-200 font-bold text-xl">92%</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-purple-700 font-medium">Avg Delivery Time</span>
-                    <span className="text-purple-800 font-bold text-xl">3.2 days</span>
+                    <span className="text-purple-700 dark:text-slate-300 font-medium">Avg Delivery Time</span>
+                    <span className="text-purple-800 dark:text-purple-200 font-bold text-xl">3.2 days</span>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-emerald-50 to-green-50">
-              <CardHeader className="bg-gradient-to-r from-emerald-100 to-green-100 rounded-t-lg">
-                <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                  <Leaf className="h-5 w-5 text-emerald-600" />
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-950/50 dark:to-green-950/30 dark:border-emerald-800/50">
+              <CardHeader className="bg-gradient-to-r from-emerald-100 to-green-100 dark:from-emerald-950/50 dark:to-green-950/50 rounded-t-lg">
+                <CardTitle className="text-xl font-bold text-slate-800 dark:text-emerald-200 flex items-center gap-2">
+                  <Leaf className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                   Sustainability Impact
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="text-center mb-4">
-                  <div className="text-4xl font-bold text-emerald-800 mb-2">
+                  <div className="text-4xl font-bold text-emerald-800 dark:text-emerald-200 mb-2">
                     {ecoDeliveryPercentage >= 70 ? "🌱" : ecoDeliveryPercentage >= 50 ? "🌿" : "🌱"}
                   </div>
-                  <div className="text-lg font-semibold text-emerald-800">
+                  <div className="text-lg font-semibold text-emerald-800 dark:text-emerald-200">
                     {ecoDeliveryPercentage >= 70 ? "Eco Champion" : ecoDeliveryPercentage >= 50 ? "Green Supporter" : "Getting Started"}
                   </div>
-                  <div className="text-sm text-emerald-600">Sustainability Level</div>
+                  <div className="text-sm text-emerald-600 dark:text-emerald-400">Sustainability Level</div>
                 </div>
                 <div className="space-y-3">
                   <div>
                     <div className="flex justify-between text-sm mb-1">
-                      <span className="text-emerald-700">Eco Delivery Choice</span>
-                      <span className="text-emerald-800 font-medium">{ecoDeliveryPercentage}%</span>
+                      <span className="text-emerald-700 dark:text-slate-300">Eco Delivery Choice</span>
+                      <span className="text-emerald-800 dark:text-emerald-200 font-medium">{ecoDeliveryPercentage}%</span>
                     </div>
-                    <div className="w-full bg-emerald-200 rounded-full h-2">
-                      <div className="bg-emerald-500 h-2 rounded-full" style={{width: `${ecoDeliveryPercentage}%`}}></div>
+                    <div className="w-full bg-emerald-200 dark:bg-slate-700 rounded-full h-2">
+                      <div className="bg-emerald-500 dark:bg-emerald-400 h-2 rounded-full" style={{width: `${ecoDeliveryPercentage}%`}}></div>
                     </div>
                   </div>
                   <div>
                     <div className="flex justify-between text-sm mb-1">
-                      <span className="text-emerald-700">Carbon Savings</span>
-                      <span className="text-emerald-800 font-medium">2.1t CO₂</span>
+                      <span className="text-emerald-700 dark:text-slate-300">Carbon Savings</span>
+                      <span className="text-emerald-800 dark:text-emerald-200 font-medium">2.1t CO₂</span>
                     </div>
-                    <div className="w-full bg-emerald-200 rounded-full h-2">
-                      <div className="bg-emerald-500 h-2 rounded-full" style={{width: '75%'}}></div>
+                    <div className="w-full bg-emerald-200 dark:bg-slate-700 rounded-full h-2">
+                      <div className="bg-emerald-500 dark:bg-emerald-400 h-2 rounded-full" style={{width: '75%'}}></div>
                     </div>
                   </div>
                 </div>
@@ -5034,13 +5295,13 @@ function CustomerDashboard({
             </Card>
           </div>
 
-          <Card className="shadow-lg border-0 bg-gradient-to-br from-slate-50 to-white">
-            <CardHeader className="bg-gradient-to-r from-slate-100 to-slate-200 rounded-t-lg">
-              <CardTitle className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                <BarChart3 className="h-6 w-6 text-slate-600" />
+          <Card className="shadow-lg border-0 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-800/50 dark:border-slate-700">
+            <CardHeader className="bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 rounded-t-lg">
+              <CardTitle className="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <BarChart3 className="h-6 w-6 text-slate-600 dark:text-slate-400" />
                 Detailed Analytics
               </CardTitle>
-              <CardDescription className="text-slate-600 text-lg">
+              <CardDescription className="text-slate-600 dark:text-slate-400 text-lg">
                 Comprehensive delivery insights and environmental impact
               </CardDescription>
             </CardHeader>

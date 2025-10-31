@@ -9,6 +9,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.21.0",
     "@hookform/resolvers": "^3.10.0",
     "@mapbox/mapbox-gl-geocoder": "^5.1.2",
     "@radix-ui/react-accordion": "1.2.2",
@@ -41,8 +42,8 @@
     "@react-spring/web": "^10.0.2",
     "@remix-run/react": "latest",
     "@sveltejs/kit": "latest",
-    "@types/mapbox-gl": "^3.4.1",
     "@types/mapbox__mapbox-gl-geocoder": "^5.0.0",
+    "@types/mapbox-gl": "^3.4.1",
     "@vercel/analytics": "latest",
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",

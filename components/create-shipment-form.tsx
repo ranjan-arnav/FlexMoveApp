@@ -277,7 +277,7 @@ export function CreateShipmentForm({
                   variants={containerVariants}
                   initial="hidden"
                   animate="show"
-                  className="grid gap-4 md:grid-cols-2"
+                  className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2"
                 >
                   {customers.map((c) => (
                     <motion.div
@@ -320,7 +320,7 @@ export function CreateShipmentForm({
                   variants={containerVariants}
                   initial="hidden"
                   animate="show"
-                  className="grid gap-4 md:grid-cols-2"
+                  className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2"
                 >
                   {transporters.map((t) => (
                     <motion.div
@@ -394,7 +394,7 @@ export function CreateShipmentForm({
                 >
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-gray-900">Shipment Information</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
                       <div className="space-y-2">
                         <Label className="text-sm font-medium text-gray-700">Origin</Label>
                         <Input

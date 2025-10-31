@@ -118,13 +118,13 @@ export function AnalyticsCharts({ userRole, timeframe = "month" }: AnalyticsChar
     userRole === "supplier" ? getSupplierData() : userRole === "transporter" ? getTransporterData() : getCustomerData()
 
   const renderBarChart = (data: ChartDataPoint[], title: string, description: string) => (
-    <Card>
+    <Card className="dark:bg-slate-900/50 dark:border-slate-800">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <BarChart3 className="h-5 w-5" />
+        <CardTitle className="flex items-center gap-2 dark:text-white">
+          <BarChart3 className="h-5 w-5 dark:text-slate-400" />
           {title}
         </CardTitle>
-        <CardDescription>{description}</CardDescription>
+        <CardDescription className="dark:text-slate-400">{description}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -135,9 +135,9 @@ export function AnalyticsCharts({ userRole, timeframe = "month" }: AnalyticsChar
             return (
               <div key={item.label} className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium">{item.label}</span>
+                  <span className="font-medium dark:text-slate-200">{item.label}</span>
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold">
+                    <span className="font-semibold dark:text-slate-300">
                       {typeof item.value === "number" && item.value > 100 ? item.value.toLocaleString() : item.value}
                       {userRole === "customer" && title.includes("Carbon")
                         ? "t CO₂"
@@ -215,14 +215,14 @@ export function AnalyticsCharts({ userRole, timeframe = "month" }: AnalyticsChar
         {kpis.map((kpi) => {
           const Icon = kpi.icon
           return (
-            <Card key={kpi.label}>
+            <Card key={kpi.label} className="dark:bg-slate-900/50 dark:border-slate-800">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{kpi.label}</CardTitle>
-                <Icon className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium dark:text-slate-200">{kpi.label}</CardTitle>
+                <Icon className="h-4 w-4 text-muted-foreground dark:text-slate-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{kpi.value}</div>
-                <p className={`text-xs ${kpi.change.startsWith("+") ? "text-primary" : "text-destructive"}`}>
+                <div className="text-2xl font-bold dark:text-white">{kpi.value}</div>
+                <p className={`text-xs ${kpi.change.startsWith("+") ? "text-primary dark:text-green-400" : "text-destructive dark:text-red-400"}`}>
                   {kpi.change} from last {timeframe}
                 </p>
               </CardContent>
@@ -238,11 +238,11 @@ export function AnalyticsCharts({ userRole, timeframe = "month" }: AnalyticsChar
       {renderKPIGrid()}
 
       <Tabs defaultValue="performance" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="performance">Performance</TabsTrigger>
-          <TabsTrigger value="sustainability">Sustainability</TabsTrigger>
-          <TabsTrigger value="financial">Financial</TabsTrigger>
-          <TabsTrigger value="trends">Trends</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4 dark:bg-slate-800 bg-slate-100">
+          <TabsTrigger value="performance" className="dark:data-[state=active]:bg-slate-700 dark:text-slate-300">Performance</TabsTrigger>
+          <TabsTrigger value="sustainability" className="dark:data-[state=active]:bg-slate-700 dark:text-slate-300">Sustainability</TabsTrigger>
+          <TabsTrigger value="financial" className="dark:data-[state=active]:bg-slate-700 dark:text-slate-300">Financial</TabsTrigger>
+          <TabsTrigger value="trends" className="dark:data-[state=active]:bg-slate-700 dark:text-slate-300">Trends</TabsTrigger>
         </TabsList>
 
         <TabsContent value="performance" className="space-y-6">
