@@ -1294,7 +1294,7 @@ export default function FlexMovePage() {
       </header>
 
       {/* Dashboard Content */}
-  <main className="container mx-auto max-w-screen-2xl p-3 sm:p-4 md:p-6">
+  <main className="container mx-auto max-w-screen-2xl p-3 sm:p-4 md:p-6 pb-24 sm:pb-6">
         {currentUser === "supplier" && (
           <SupplierDashboard 
             onCreateShipment={handleCreateShipment}
