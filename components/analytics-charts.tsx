@@ -17,6 +17,7 @@ import {
   Truck,
   Clock,
 } from "lucide-react"
+import { formatCurrencyINR } from "@/lib/utils"
 
 interface ChartDataPoint {
   label: string
@@ -54,10 +55,10 @@ export function AnalyticsCharts({ userRole, timeframe = "month" }: AnalyticsChar
       { label: "Q4", value: 35, change: 7 },
     ],
     routeEfficiency: [
-      { label: "NYC → LA", value: 92, change: 3 },
-      { label: "CHI → MIA", value: 88, change: -2 },
-      { label: "SEA → DEN", value: 95, change: 5 },
-      { label: "LA → SEA", value: 90, change: 1 },
+      { label: "DEL → MUM", value: 92, change: 3 },
+      { label: "BLR → HYD", value: 88, change: -2 },
+      { label: "KOL → PUN", value: 95, change: 5 },
+      { label: "MUM → BLR", value: 90, change: 1 },
     ],
   })
 
@@ -95,9 +96,9 @@ export function AnalyticsCharts({ userRole, timeframe = "month" }: AnalyticsChar
       { label: "Eco Delivery", value: 65, color: "#10b981" },
     ],
     supplierRatings: [
-      { label: "TechCorp Inc.", value: 4.8, change: 0.2 },
-      { label: "Global Retail", value: 4.6, change: -0.1 },
-      { label: "Manufacturing Co.", value: 4.7, change: 0.3 },
+      { label: "TechCorp India Pvt Ltd", value: 4.8, change: 0.2 },
+      { label: "Global Retail India", value: 4.6, change: -0.1 },
+      { label: "Manufacturing Co. India", value: 4.7, change: 0.3 },
     ],
     costSavings: [
       { label: "Eco Choices", value: 1200, change: 15 },
@@ -114,8 +115,8 @@ export function AnalyticsCharts({ userRole, timeframe = "month" }: AnalyticsChar
     ],
   })
 
-  const data =
-    userRole === "supplier" ? getSupplierData() : userRole === "transporter" ? getTransporterData() : getCustomerData()
+  // NOTE: Avoid assigning a union object shape. Instead, call the specific getter
+  // inside each userRole branch so TypeScript knows the exact shape being used.
 
   const renderBarChart = (data: ChartDataPoint[], title: string, description: string) => (
     <Card className="dark:bg-slate-900/50 dark:border-slate-800">
@@ -193,7 +194,7 @@ export function AnalyticsCharts({ userRole, timeframe = "month" }: AnalyticsChar
         ? [
             { label: "Active Shipments", value: "24", change: "+2", icon: Package },
             { label: "On-Time Rate", value: "94.2%", change: "+1.2%", icon: Clock },
-            { label: "Cost Savings", value: "$12.4K", change: "+8%", icon: DollarSign },
+            { label: "Cost Savings", value: "₹12.4K", change: "+8%", icon: DollarSign },
             { label: "Carbon Reduction", value: "12%", change: "+3%", icon: Leaf },
           ]
         : userRole === "transporter"
@@ -206,7 +207,7 @@ export function AnalyticsCharts({ userRole, timeframe = "month" }: AnalyticsChar
           : [
               { label: "Eco Deliveries", value: "67%", change: "+12%", icon: Leaf },
               { label: "Avg Delivery Time", value: "3.2 days", change: "-0.5", icon: Clock },
-              { label: "Cost Savings", value: "$2.4K", change: "+15%", icon: DollarSign },
+              { label: "Cost Savings", value: "₹2.4K", change: "+15%", icon: DollarSign },
               { label: "Supplier Rating", value: "4.7/5", change: "+0.1", icon: Award },
             ]
 
@@ -248,22 +249,37 @@ export function AnalyticsCharts({ userRole, timeframe = "month" }: AnalyticsChar
         <TabsContent value="performance" className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
             {userRole === "supplier" && (
-              <>
-                {renderBarChart(data.shipmentVolume, "Shipment Volume", "Monthly shipment trends and growth")}
-                {renderBarChart(data.routeEfficiency, "Route Efficiency", "Performance by major routes")}
-              </>
+              (() => {
+                const d = getSupplierData()
+                return (
+                  <>
+                    {renderBarChart(d.shipmentVolume, "Shipment Volume", "Monthly shipment trends and growth")}
+                    {renderBarChart(d.routeEfficiency, "Route Efficiency", "Performance by major routes")}
+                  </>
+                )
+              })()
             )}
             {userRole === "transporter" && (
-              <>
-                {renderBarChart(data.deliveryPerformance, "Delivery Performance", "On-time delivery breakdown")}
-                {renderBarChart(data.fleetUtilization, "Fleet Utilization", "Vehicle type utilization rates")}
-              </>
+              (() => {
+                const d = getTransporterData()
+                return (
+                  <>
+                    {renderBarChart(d.deliveryPerformance, "Delivery Performance", "On-time delivery breakdown")}
+                    {renderBarChart(d.fleetUtilization, "Fleet Utilization", "Vehicle type utilization rates")}
+                  </>
+                )
+              })()
             )}
             {userRole === "customer" && (
-              <>
-                {renderBarChart(data.deliveryTrends, "Delivery Preferences", "Your delivery choice breakdown")}
-                {renderBarChart(data.supplierRatings, "Supplier Ratings", "Your ratings for suppliers")}
-              </>
+              (() => {
+                const d = getCustomerData()
+                return (
+                  <>
+                    {renderBarChart(d.deliveryTrends, "Delivery Preferences", "Your delivery choice breakdown")}
+                    {renderBarChart(d.supplierRatings, "Supplier Ratings", "Your ratings for suppliers")}
+                  </>
+                )
+              })()
             )}
           </div>
         </TabsContent>
@@ -271,8 +287,10 @@ export function AnalyticsCharts({ userRole, timeframe = "month" }: AnalyticsChar
         <TabsContent value="sustainability" className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
             {userRole === "supplier" && (
-              <>
-                {renderBarChart(data.carbonReduction, "Carbon Reduction", "Quarterly CO₂ reduction progress")}
+              (() => {
+                const d = getSupplierData()
+                return (<>
+                {renderBarChart(d.carbonReduction, "Carbon Reduction", "Quarterly CO₂ reduction progress")}
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -307,12 +325,15 @@ export function AnalyticsCharts({ userRole, timeframe = "month" }: AnalyticsChar
                     </div>
                   </CardContent>
                 </Card>
-              </>
+              </>)
+              })()
             )}
             {userRole === "transporter" && (
-              <>
+              (() => {
+                const d = getTransporterData()
+                return (<>
                 {renderBarChart(
-                  data.sustainabilityScore,
+                  d.sustainabilityScore,
                   "Sustainability Metrics",
                   "Environmental performance indicators",
                 )}
@@ -352,12 +373,15 @@ export function AnalyticsCharts({ userRole, timeframe = "month" }: AnalyticsChar
                     </div>
                   </CardContent>
                 </Card>
-              </>
+              </>)
+              })()
             )}
             {userRole === "customer" && (
-              <>
+              (() => {
+                const d = getCustomerData()
+                return (<>
                 {renderBarChart(
-                  data.carbonImpact,
+                  d.carbonImpact,
                   "Carbon Footprint Reduction",
                   "Monthly CO₂ savings from eco choices",
                 )}
@@ -388,7 +412,8 @@ export function AnalyticsCharts({ userRole, timeframe = "month" }: AnalyticsChar
                     </div>
                   </CardContent>
                 </Card>
-              </>
+              </>)
+              })()
             )}
           </div>
         </TabsContent>
@@ -396,8 +421,10 @@ export function AnalyticsCharts({ userRole, timeframe = "month" }: AnalyticsChar
         <TabsContent value="financial" className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
             {userRole === "supplier" && (
-              <>
-                {renderBarChart(data.costTrends, "Cost Analysis", "Breakdown of operational costs")}
+              (() => {
+                const d = getSupplierData()
+                return (<>
+                {renderBarChart(d.costTrends, "Cost Analysis", "Breakdown of operational costs")}
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -414,7 +441,7 @@ export function AnalyticsCharts({ userRole, timeframe = "month" }: AnalyticsChar
                           <div className="text-sm text-muted-foreground">Potential savings</div>
                         </div>
                         <div className="text-right">
-                          <div className="font-semibold text-primary">$2,400/month</div>
+                          <div className="font-semibold text-primary">{formatCurrencyINR(2400)}/month</div>
                           <div className="text-xs text-muted-foreground">8% reduction</div>
                         </div>
                       </div>
@@ -424,18 +451,21 @@ export function AnalyticsCharts({ userRole, timeframe = "month" }: AnalyticsChar
                           <div className="text-sm text-muted-foreground">Long-term savings</div>
                         </div>
                         <div className="text-right">
-                          <div className="font-semibold text-primary">$1,800/month</div>
+                          <div className="font-semibold text-primary">{formatCurrencyINR(1800)}/month</div>
                           <div className="text-xs text-muted-foreground">6% reduction</div>
                         </div>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-              </>
+              </>)
+              })()
             )}
             {userRole === "transporter" && (
-              <>
-                {renderBarChart(data.revenueGrowth, "Revenue Growth", "Monthly revenue trends")}
+              (() => {
+                const d = getTransporterData()
+                return (<>
+                {renderBarChart(d.revenueGrowth, "Revenue Growth", "Monthly revenue trends")}
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -455,7 +485,7 @@ export function AnalyticsCharts({ userRole, timeframe = "month" }: AnalyticsChar
                           <div className="flex justify-between text-sm">
                             <span className="font-medium">{item.service}</span>
                             <span>
-                              ${item.revenue.toLocaleString()} ({item.margin}% margin)
+                              {formatCurrencyINR(item.revenue)} ({item.margin}% margin)
                             </span>
                           </div>
                           <Progress value={(item.revenue / 55000) * 100} className="h-2" />
@@ -464,11 +494,14 @@ export function AnalyticsCharts({ userRole, timeframe = "month" }: AnalyticsChar
                     </div>
                   </CardContent>
                 </Card>
-              </>
+              </>)
+              })()
             )}
             {userRole === "customer" && (
-              <>
-                {renderBarChart(data.costSavings, "Cost Savings", "Savings from smart choices")}
+              (() => {
+                const d = getCustomerData()
+                return (<>
+                {renderBarChart(d.costSavings, "Cost Savings", "Savings from smart choices")}
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -480,23 +513,24 @@ export function AnalyticsCharts({ userRole, timeframe = "month" }: AnalyticsChar
                   <CardContent>
                     <div className="space-y-4">
                       <div className="text-center p-4 bg-muted rounded-lg">
-                        <div className="text-2xl font-bold mb-1">$18,450</div>
+                        <div className="text-2xl font-bold mb-1">{formatCurrencyINR(18450)}</div>
                         <div className="text-sm text-muted-foreground">Projected annual logistics spend</div>
                       </div>
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
                           <span>With current eco choices</span>
-                          <span className="font-medium text-primary">-$2,400 savings</span>
+                          <span className="font-medium text-primary">-₹2,400 savings</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span>Potential additional savings</span>
-                          <span className="font-medium text-muted-foreground">-$800 available</span>
+                          <span className="font-medium text-muted-foreground">-₹800 available</span>
                         </div>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-              </>
+              </>)
+              })()
             )}
           </div>
         </TabsContent>
@@ -516,7 +550,7 @@ export function AnalyticsCharts({ userRole, timeframe = "month" }: AnalyticsChar
                   [
                     { metric: "On-Time Delivery Rate", your: 94.2, industry: 89.5, unit: "%" },
                     { metric: "Carbon Efficiency", your: 1.2, industry: 1.8, unit: "t CO₂/shipment" },
-                    { metric: "Cost per Mile", your: 2.45, industry: 2.78, unit: "$" },
+                    { metric: "Cost per km", your: 2.45, industry: 2.78, unit: "₹" },
                   ].map((benchmark) => (
                     <div key={benchmark.metric} className="space-y-2">
                       <div className="flex justify-between text-sm">

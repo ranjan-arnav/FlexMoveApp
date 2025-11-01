@@ -67,12 +67,18 @@ import { Bar, BarChart, Line, LineChart, Pie, PieChart, CartesianGrid, XAxis, YA
 import { Chatbot } from "@/components/chatbot";
 import { AIInsightsButton } from "@/components/ai-insights-button";
 import { storage } from "@/lib/storage";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrencyINR } from "@/lib/utils";
 
 type UserRole = "supplier" | "transporter" | "customer" | null;
 
 type TransportMode = "truck" | "ship" | "air" | "ev";
-type ShipmentStatus = "pending" | "in-transit" | "delivered" | "delayed";
+type ShipmentStatus =
+  | "pending"
+  | "in-transit"
+  | "delivered"
+  | "delayed"
+  | "dispatched"
+  | "preparing";
 type RiskLevel = "low" | "medium" | "high";
 
 interface ShipmentData {
@@ -87,6 +93,14 @@ interface ShipmentData {
   carbonFootprint: number;
   riskLevel: RiskLevel;
   disruptionProbability: number;
+  // Additional fields used throughout the UI
+  origin: string;
+  destination: string;
+  weight: number;
+  priority: "low" | "medium" | "high" | "urgent";
+  progress: number;
+  vehicle?: string;
+  lastUpdate?: string;
 }
 
 interface DisruptionAlert {
@@ -131,90 +145,90 @@ export default function FlexMovePage() {
   const [globalShipments, setGlobalShipments] = useState<ShipmentData[]>([
     {
       id: "SH001",
-      customer: "TechCorp Inc.",
-      transporter: "FastTrack Logistics",
+      customer: "TechCorp India Pvt Ltd",
+      transporter: "FastTrack Logistics India",
       mode: "truck",
-      route: "New York → Los Angeles",
+      route: "Delhi → Mumbai",
       status: "in-transit",
       eta: "2 days",
       cost: 1200,
       carbonFootprint: 85,
       riskLevel: "low",
       disruptionProbability: 5,
-      origin: "New York, NY",
-      destination: "Los Angeles, CA",
+      origin: "New Delhi",
+      destination: "Mumbai",
       weight: 500,
       priority: "high",
       progress: 65
     },
     {
       id: "SH002",
-      customer: "Global Retail",
-      transporter: "Ocean Express",
+      customer: "Global Retail India",
+      transporter: "Ocean Express India",
       mode: "ship",
-      route: "Los Angeles → Shanghai",
+      route: "Mumbai → Chennai",
       status: "delivered",
       eta: "Completed",
       cost: 3500,
       carbonFootprint: 220,
       riskLevel: "medium",
       disruptionProbability: 15,
-      origin: "Los Angeles, CA",
-      destination: "Shanghai, China",
+      origin: "Mumbai",
+      destination: "Chennai",
       weight: 2000,
       priority: "medium",
       progress: 100
     },
     {
       id: "SH003",
-      customer: "Manufacturing Co.",
-      transporter: "Green Transport",
+      customer: "Manufacturing Co. India",
+      transporter: "Green Transport India",
       mode: "ev",
-      route: "Chicago → Miami",
+      route: "Bengaluru → Hyderabad",
       status: "pending",
       eta: "5 days",
       cost: 800,
       carbonFootprint: 45,
       riskLevel: "low",
       disruptionProbability: 8,
-      origin: "Chicago, IL",
-      destination: "Miami, FL",
+      origin: "Bengaluru",
+      destination: "Hyderabad",
       weight: 350,
       priority: "low",
       progress: 10
     },
     {
       id: "SH004",
-      customer: "Global Retail",
-      transporter: "Ocean Express",
+      customer: "Global Retail India",
+      transporter: "Ocean Express India",
       mode: "ship",
-      route: "Chicago → Miami",
+      route: "Chennai → Kolkata",
       status: "dispatched",
       eta: "3 days",
       cost: 2450,
       carbonFootprint: 120,
       riskLevel: "low",
       disruptionProbability: 10,
-      origin: "Chicago, IL",
-      destination: "Miami, FL",
+      origin: "Chennai",
+      destination: "Kolkata",
       weight: 1200,
       priority: "medium",
       progress: 25
     },
     {
       id: "SH007",
-      customer: "Manufacturing Co.",
-      transporter: "Green Transport",
+      customer: "Manufacturing Co. India",
+      transporter: "Green Transport India",
       mode: "truck",
-      route: "Seattle → Denver",
+      route: "Ahmedabad → Jaipur",
       status: "preparing",
       eta: "5 days",
       cost: 950,
       carbonFootprint: 65,
       riskLevel: "low",
       disruptionProbability: 5,
-      origin: "Seattle, WA",
-      destination: "Denver, CO",
+      origin: "Ahmedabad",
+      destination: "Jaipur",
       weight: 450,
       priority: "low",
       progress: 10
@@ -369,7 +383,12 @@ export default function FlexMovePage() {
       cost: Math.floor(Math.random() * 2000) + 500,
       carbonFootprint: Math.floor(Math.random() * 200) + 50,
       riskLevel: shipmentData.priority === 'urgent' ? 'high' : shipmentData.priority === 'high' ? 'medium' : 'low' as RiskLevel,
-      disruptionProbability: Math.floor(Math.random() * 30) + 5
+      disruptionProbability: Math.floor(Math.random() * 30) + 5,
+      origin: shipmentData.origin,
+      destination: shipmentData.destination,
+      weight: Number(shipmentData.weight) || 0,
+      priority: (shipmentData.priority as any) || 'low',
+      progress: 0
     };
     
     setGlobalShipments(prev => [...prev, newShipment]);
@@ -530,10 +549,10 @@ export default function FlexMovePage() {
 
   // Global data
   const customers = [
-    { id: "C001", name: "TechCorp Inc.", location: "New York, NY" },
-    { id: "C002", name: "Global Retail", location: "Los Angeles, CA" },
-    { id: "C003", name: "Manufacturing Co.", location: "Chicago, IL" },
-    { id: "C004", name: "Logistics Plus", location: "Miami, FL" },
+    { id: "C001", name: "TechCorp India Pvt Ltd", location: "New Delhi, DL" },
+    { id: "C002", name: "Global Retail India", location: "Mumbai, MH" },
+    { id: "C003", name: "Manufacturing Co. India", location: "Bengaluru, KA" },
+    { id: "C004", name: "Logistics Plus India", location: "Hyderabad, TS" },
   ];
 
   const transporters = [
@@ -563,10 +582,10 @@ export default function FlexMovePage() {
   const suppliers = [
     {
       id: "S001",
-      name: "TechCorp Inc.",
+      name: "TechCorp India Pvt Ltd",
       rating: 4.8,
       specialties: ["Electronics", "Software", "Hardware"],
-      location: "New York, NY",
+      location: "New Delhi",
       deliveryTime: "2-3 days",
       minOrder: 500,
       ecoFriendly: true,
@@ -576,10 +595,10 @@ export default function FlexMovePage() {
     },
     {
       id: "S002",
-      name: "Global Retail",
+      name: "Global Retail India",
       rating: 4.6,
       specialties: ["Consumer Goods", "Fashion", "Home & Garden"],
-      location: "Los Angeles, CA",
+      location: "Mumbai",
       deliveryTime: "3-5 days",
       minOrder: 300,
       ecoFriendly: false,
@@ -589,10 +608,10 @@ export default function FlexMovePage() {
     },
     {
       id: "S003",
-      name: "Manufacturing Co.",
+      name: "Manufacturing Co. India",
       rating: 4.7,
       specialties: ["Industrial Equipment", "Automotive Parts", "Machinery"],
-      location: "Chicago, IL",
+      location: "Bengaluru",
       deliveryTime: "5-7 days",
       minOrder: 1000,
       ecoFriendly: true,
@@ -602,10 +621,10 @@ export default function FlexMovePage() {
     },
     {
       id: "S004",
-      name: "Logistics Plus",
+      name: "Logistics Plus India",
       rating: 4.9,
       specialties: ["Logistics Services", "Warehousing", "Distribution"],
-      location: "Miami, FL",
+      location: "Hyderabad",
       deliveryTime: "1-2 days",
       minOrder: 200,
       ecoFriendly: true,
@@ -1291,6 +1310,7 @@ export default function FlexMovePage() {
             onRequestAction={handleRequestAction}
             onShipmentStatusUpdate={handleShipmentStatusUpdate}
             shipments={globalShipments}
+            onAIInsights={handleAIInsights}
           />
         )}
         {currentUser === "customer" && (
@@ -1512,7 +1532,7 @@ function RerouteDialog({
                         </div>
                         <div className="flex items-center gap-2">
                           <DollarSign className="h-4 w-4 text-green-600" />
-                          <span>${route.cost}</span>
+                          <span>{formatCurrencyINR(route.cost)}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Leaf className="h-4 w-4 text-green-600" />
@@ -1637,7 +1657,7 @@ function NewOrderDialog({
                             <span className="font-medium">Delivery:</span> {supplier.deliveryTime}
                           </div>
                           <div>
-                            <span className="font-medium">Min Order:</span> ${supplier.minOrder}
+                            <span className="font-medium">Min Order:</span> {formatCurrencyINR(supplier.minOrder)}
                           </div>
                           <div>
                             <span className="font-medium">On-Time Rate:</span> {supplier.onTimeRate}%
@@ -1768,10 +1788,10 @@ function SupplierDashboard({
   const [showAnalytics, setShowAnalytics] = useState(false);
 
   const customers = [
-    { id: "C001", name: "TechCorp Inc.", location: "New York, NY" },
-    { id: "C002", name: "Global Retail", location: "Los Angeles, CA" },
-    { id: "C003", name: "Manufacturing Co.", location: "Chicago, IL" },
-    { id: "C004", name: "Logistics Plus", location: "Miami, FL" },
+    { id: "C001", name: "TechCorp India Pvt Ltd", location: "New Delhi, DL" },
+    { id: "C002", name: "Global Retail India", location: "Mumbai, MH" },
+    { id: "C003", name: "Manufacturing Co. India", location: "Bengaluru, KA" },
+    { id: "C004", name: "Logistics Plus India", location: "Hyderabad, TS" },
   ];
 
   const transporters = [
@@ -1853,11 +1873,11 @@ function SupplierDashboard({
       id: 'DISP-001',
       shipmentId: 'SHIP-2023-0456',
       type: 'Severe Weather Alert',
-      description: 'Heavy snowstorm causing delays on I-80 in Wyoming',
+      description: 'Heavy rainfall causing delays on NH48 in Gujarat',
       delay: '12-24 hours',
       status: 'active',
       severity: 'high',
-      location: 'I-80, WY',
+      location: 'NH48, GJ',
       timestamp: new Date(Date.now() - 3600000 * 2).toISOString(), // 2 hours ago
       suggestions: ['Reroute shipment', 'Delay delivery', 'Contact customer']
     },
@@ -1869,7 +1889,7 @@ function SupplierDashboard({
       delay: '6-8 hours',
       status: 'in-progress',
       severity: 'medium',
-      location: 'Denver, CO',
+      location: 'Nagpur, MH',
       timestamp: new Date(Date.now() - 3600000 * 1).toISOString(), // 1 hour ago
       suggestions: ['Arrange backup vehicle', 'Update ETA', 'Contact repair service']
     },
@@ -1877,11 +1897,11 @@ function SupplierDashboard({
       id: 'DISP-003',
       shipmentId: 'SHIP-2023-0458',
       type: 'Port Congestion',
-      description: 'Unloading delays at Port of Los Angeles',
+      description: 'Unloading delays at JNPT (Jawaharlal Nehru Port Trust)',
       delay: '24-48 hours',
       status: 'monitoring',
       severity: 'high',
-      location: 'Los Angeles, CA',
+      location: 'Navi Mumbai, MH',
       timestamp: new Date(Date.now() - 3600000 * 4).toISOString(), // 4 hours ago
       suggestions: ['Reroute to alternate port', 'Update customer', 'Monitor situation']
     },
@@ -2120,7 +2140,7 @@ function SupplierDashboard({
                 </div>
           </CardHeader>
           <CardContent>
-                <div className="text-3xl font-bold text-purple-800 dark:text-purple-200">$12,450</div>
+                <div className="text-3xl font-bold text-purple-800 dark:text-purple-200">{formatCurrencyINR(12450)}</div>
                 <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">+8% this quarter</p>
                 <div className="mt-2 w-full bg-purple-200 dark:bg-purple-900/40 rounded-full h-2">
                   <div className="bg-purple-500 dark:bg-purple-400 h-2 rounded-full" style={{width: '75%'}}></div>
@@ -2277,7 +2297,7 @@ function SupplierDashboard({
                         <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
                         <div>
                           <div className="text-slate-500 dark:text-slate-400 text-xs">Cost</div>
-                          <div className="font-semibold text-slate-800 dark:text-slate-200">${shipment.cost.toLocaleString()}</div>
+                          <div className="font-semibold text-slate-800 dark:text-slate-200">{formatCurrencyINR(shipment.cost)}</div>
                   </div>
                   </div>
                       <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
@@ -2363,12 +2383,12 @@ function SupplierDashboard({
           </CardHeader>
               <CardContent className="p-6">
             <div className="space-y-4">
-              {[
-                    { route: "NYC → LA", disruptions: 12, percentage: 85, color: "red" },
-                    { route: "CHI → MIA", disruptions: 8, percentage: 60, color: "orange" },
-                    { route: "SEA → DEN", disruptions: 5, percentage: 35, color: "yellow" },
-                    { route: "LA → SEA", disruptions: 3, percentage: 20, color: "green" },
-              ].map((route) => (
+      {[
+        { route: "DEL → MUM", disruptions: 12, percentage: 85, color: "red" },
+        { route: "BLR → HYD", disruptions: 8, percentage: 60, color: "orange" },
+        { route: "MUM → PUN", disruptions: 5, percentage: 35, color: "yellow" },
+        { route: "CHE → KOL", disruptions: 3, percentage: 20, color: "green" },
+      ].map((route) => (
                 <div key={route.route} className="space-y-2">
                       <div className="flex justify-between text-sm font-medium">
                         <span className="text-slate-700 dark:text-slate-300">{route.route}</span>
@@ -2765,7 +2785,7 @@ function SupplierDashboard({
                   <YAxis yAxisId="left" stroke="#16a34a" />
                   <YAxis yAxisId="right" orientation="right" stroke="#6b7280" />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar yAxisId="left" dataKey="cost" fill="#22c55e" radius={[4, 4, 0, 0]} name="Cost ($k)" />
+                  <Bar yAxisId="left" dataKey="cost" fill="#22c55e" radius={[4, 4, 0, 0]} name="Cost (₹k)" />
                   <Line yAxisId="right" type="monotone" dataKey="carbon" stroke="#4b5563" strokeWidth={2} name="Carbon (t CO₂)" />
                 </BarChart>
               </ChartContainer>
@@ -2816,7 +2836,7 @@ function SupplierDashboard({
                   </ChartContainer>
                 </div>
                 <div className="space-y-3 sm:space-y-4">
-                  <h3 className="font-semibold dark:text-slate-200 text-sm sm:text-base">Average Cost per Shipment ($k)</h3>
+                  <h3 className="font-semibold dark:text-slate-200 text-sm sm:text-base">Average Cost per Shipment (₹k)</h3>
                   <ChartContainer config={{}} className="h-[200px] sm:h-[250px] w-full">
                     <BarChart data={carrierPerformanceData} layout="vertical" margin={{ left: 20 }}>
                       <CartesianGrid horizontal={false} />
@@ -2900,11 +2920,13 @@ function SupplierDashboard({
 function TransporterDashboard({
   onRequestAction, 
   onShipmentStatusUpdate, 
-  shipments = [] 
+  shipments = [],
+  onAIInsights,
 }: {
   onRequestAction: (id: string, action: 'accept' | 'decline') => void;
   onShipmentStatusUpdate: (id: string, status: string) => void;
   shipments: ShipmentData[];
+  onAIInsights: (message: string, context?: any) => void;
 }) {
   const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
@@ -2912,8 +2934,8 @@ function TransporterDashboard({
   const [activeShipments, setActiveShipments] = useState([
     {
       id: "SH001",
-      supplier: "TechCorp Inc.",
-      route: "NYC → LA",
+      supplier: "TechCorp India Pvt Ltd",
+      route: "DEL → MUM",
       status: "in-transit",
       progress: 65,
       vehicle: "TRK-001",
@@ -2922,8 +2944,8 @@ function TransporterDashboard({
     },
     {
       id: "SH004",
-      supplier: "Global Retail",
-      route: "CHI → MIA",
+      supplier: "Global Retail India",
+      route: "BLR → HYD",
       status: "dispatched",
       progress: 25,
       vehicle: "SHP-002",
@@ -2932,8 +2954,8 @@ function TransporterDashboard({
     },
     {
       id: "SH007",
-      supplier: "Manufacturing Co.",
-      route: "SEA → DEN",
+      supplier: "Manufacturing Co. India",
+      route: "AMD → JAI",
       status: "preparing",
       progress: 10,
       vehicle: "TRK-003",
@@ -2949,10 +2971,10 @@ function TransporterDashboard({
       model: "Freightliner Cascadia",
       capacity: "80,000 lbs",
       status: "in-transit",
-      location: "Kansas City, MO",
-      driver: "John Smith",
+      location: "Nagpur, MH",
+      driver: "Amit Kumar",
       isEV: false,
-      fuelEfficiency: "6.5 MPG",
+      fuelEfficiency: "3.0 km/l",
       lastMaintenance: "2025-01-15",
     },
     {
@@ -2961,10 +2983,10 @@ function TransporterDashboard({
       model: "Tesla Semi",
       capacity: "82,000 lbs",
       status: "available",
-      location: "Los Angeles, CA",
-      driver: "Sarah Johnson",
+      location: "Mumbai, MH",
+      driver: "Pooja Sharma",
       isEV: true,
-      fuelEfficiency: "1.7 kWh/mile",
+      fuelEfficiency: "1.0 kWh/km",
       lastMaintenance: "2025-02-01",
     },
     {
@@ -2973,10 +2995,10 @@ function TransporterDashboard({
       model: "Container Vessel",
       capacity: "20,000 TEU",
       status: "available",
-      location: "Port of Long Beach",
-      driver: "Captain Rodriguez",
+      location: "JNPT, Navi Mumbai",
+      driver: "Captain Iyer",
       isEV: false,
-      fuelEfficiency: "0.15 gal/TEU-mile",
+      fuelEfficiency: "0.10 l/TEU-km",
       lastMaintenance: "2025-01-20",
     },
     {
@@ -2985,10 +3007,10 @@ function TransporterDashboard({
       model: "Boeing 747F",
       capacity: "140 tons",
       status: "maintenance",
-      location: "LAX Cargo",
-      driver: "Pilot Williams",
+      location: "IGI Cargo, Delhi",
+      driver: "Pilot Singh",
       isEV: false,
-      fuelEfficiency: "4.2 gal/mile",
+      fuelEfficiency: "2.6 l/km",
       lastMaintenance: "2025-02-10",
     },
   ]);
@@ -2996,30 +3018,30 @@ function TransporterDashboard({
   const [pendingRequests, setPendingRequests] = useState([
     {
       id: "REQ001",
-      supplier: "TechCorp Inc.",
-      route: "NYC → LA",
+      supplier: "TechCorp India Pvt Ltd",
+      route: "DEL → MUM",
       priority: "High",
-      weight: "45,000 lbs",
+      weight: "20,000 kg",
       estimatedRevenue: 2450,
       pickupDate: "2025-02-15",
       deliveryDate: "2025-02-18",
     },
     {
       id: "REQ002",
-      supplier: "Global Retail",
-      route: "CHI → MIA",
+      supplier: "Global Retail India",
+      route: "BLR → HYD",
       priority: "Medium",
-      weight: "32,000 lbs",
+      weight: "12,000 kg",
       estimatedRevenue: 1850,
       pickupDate: "2025-02-16",
       deliveryDate: "2025-02-20",
     },
     {
       id: "REQ003",
-      supplier: "Manufacturing Co.",
-      route: "SEA → DEN",
+      supplier: "Manufacturing Co. India",
+      route: "AMD → JAI",
       priority: "Low",
-      weight: "28,000 lbs",
+      weight: "10,000 kg",
       estimatedRevenue: 1650,
       pickupDate: "2025-02-17",
       deliveryDate: "2025-02-22",
@@ -3075,20 +3097,20 @@ function TransporterDashboard({
     {
       id: "TRK-001",
       type: "truck" as const,
-      position: { lat: 39.0458, lng: -76.6413 },
+      position: { lat: 28.6139, lng: 77.209 },
       shipmentId: "SH001",
       status: "in-transit" as const,
     },
     {
       id: "TRK-002",
       type: "ev" as const,
-      position: { lat: 34.0522, lng: -118.2437 },
+      position: { lat: 19.076, lng: 72.8777 },
       status: "idle" as const,
     },
     {
       id: "SHP-001",
       type: "ship" as const,
-      position: { lat: 33.7701, lng: -118.1937 },
+      position: { lat: 18.946, lng: 72.952 },
       status: "loading" as const,
     },
   ];
@@ -3104,6 +3126,7 @@ function TransporterDashboard({
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2">Transporter Dashboard</h1>
               <p className="text-green-100 dark:text-green-200 text-sm sm:text-base md:text-lg">Manage your fleet operations and delivery performance</p>
             </div>
+            {/* AI quick actions removed per feedback */}
             <div className="flex flex-wrap gap-2 sm:gap-3">
               <Button 
                 onClick={() => setShowAddVehicle(true)}
@@ -3241,7 +3264,7 @@ function TransporterDashboard({
                 </div>
           </CardHeader>
           <CardContent>
-                <div className="text-3xl font-bold text-purple-800 dark:text-purple-200">$45,230</div>
+                <div className="text-3xl font-bold text-purple-800 dark:text-purple-200">{formatCurrencyINR(45230)}</div>
                 <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">+12% from last month</p>
                 <div className="mt-2 w-full bg-purple-200 dark:bg-purple-900/40 rounded-full h-2">
                   <div className="bg-purple-500 dark:bg-purple-400 h-2 rounded-full" style={{width: '85%'}}></div>
@@ -3375,13 +3398,21 @@ function TransporterDashboard({
                             {vehicle.lastMaintenance}
                           </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 items-center">
                           <Button size="sm" variant="outline">
                             Edit
                           </Button>
                           {vehicle.status === "available" && (
                             <Button size="sm">Assign</Button>
                           )}
+                          <AIInsightsButton
+                            size="sm"
+                            variant="outline"
+                            label="Next best step"
+                            message={`For vehicle ${vehicle.id}, suggest the next best action today. Should we assign it to a pending request, keep available, or schedule maintenance? Include rationale.`}
+                            context={{ vehicle, vehicles, pendingRequests, activeShipments }}
+                            onClick={onAIInsights}
+                          />
                         </div>
                       </div>
                     </div>
@@ -3425,7 +3456,7 @@ function TransporterDashboard({
                       <div>
                         <span className="text-muted-foreground">Revenue:</span>
                         <div className="font-medium text-primary">
-                          ${request.estimatedRevenue.toLocaleString()}
+                          {formatCurrencyINR(request.estimatedRevenue)}
                         </div>
                       </div>
                       <div>
@@ -3460,6 +3491,14 @@ function TransporterDashboard({
                         <CheckCircle className="h-4 w-4 mr-1" />
                         Accept
                       </Button>
+                      <AIInsightsButton
+                        size="sm"
+                        variant="outline"
+                        label="AI Suggestion"
+                        message={`Draft a quote and ETA for request ${request.id}. Recommend the best vehicle and route, and give a quick INR cost breakdown.`}
+                        context={{ request, vehicles, activeShipments }}
+                        onClick={onAIInsights}
+                      />
                     </div>
                   </div>
                 ))}
@@ -3725,6 +3764,16 @@ function TransporterDashboard({
                     <Badge className="bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300">{vehicles.filter(v => v.status === "maintenance").length}</Badge>
                   </div>
                 </div>
+                <div className="mt-3">
+                  <AIInsightsButton
+                    size="sm"
+                    variant="outline"
+                    label="Optimize routes"
+                    message="Using current vehicles, shipments, and pending requests, propose an optimized route plan for today with driver assignments."
+                    context={{ vehicles, activeShipments, pendingRequests }}
+                    onClick={onAIInsights}
+                  />
+                </div>
               </CardContent>
             </Card>
 
@@ -3742,7 +3791,20 @@ function TransporterDashboard({
                   </div>
                   <div className="text-sm text-green-600 mb-4">EV Adoption</div>
                   <div className="w-full bg-green-200 rounded-full h-3">
-                    <div className="bg-green-500 h-3 rounded-full" style={{width: `${(vehicles.filter(v => v.isEV).length / vehicles.length) * 100}%`}}></div>
+                    <div
+                      className="bg-green-500 h-3 rounded-full"
+                      style={{ width: `${(vehicles.filter(v => v.isEV).length / vehicles.length) * 100}%` }}
+                    />
+                  </div>
+                  <div className="mt-3">
+                    <AIInsightsButton
+                      size="sm"
+                      variant="outline"
+                      label="Plan EV assignments"
+                      message="Suggest optimal EV assignments for today to maximize sustainability and minimize cost, considering current shipments and vehicle range."
+                      context={{ vehicles, activeShipments, shipments }}
+                      onClick={onAIInsights}
+                    />
                   </div>
                 </div>
               </CardContent>
@@ -3815,7 +3877,20 @@ function TransporterDashboard({
                           <span className="text-orange-800 font-medium">{shipment.progress}% • ETA: {shipment.eta}</span>
                         </div>
                         <div className="w-full bg-orange-200 rounded-full h-2">
-                          <div className="bg-orange-500 h-2 rounded-full" style={{width: `${shipment.progress}%`}}></div>
+                          <div
+                            className="bg-orange-500 h-2 rounded-full"
+                            style={{ width: `${shipment.progress}%` }}
+                          />
+                        </div>
+                        <div className="pt-2">
+                          <AIInsightsButton
+                            size="sm"
+                            variant="outline"
+                            label="Explain delays & reroute"
+                            message={`Analyze shipment ${shipment.id} for possible delays. Recommend rerouting options and customer messaging if needed.`}
+                            context={{ shipment, vehicles }}
+                            onClick={onAIInsights}
+                          />
                         </div>
                       </div>
                     </div>
@@ -4021,7 +4096,7 @@ function AddVehicleForm({ onClose }: { onClose: () => void }) {
         <Label htmlFor="location">Current Location</Label>
         <Input
           id="location"
-          placeholder="e.g., Los Angeles, CA"
+          placeholder="e.g., Mumbai, MH"
           value={formData.location}
           onChange={(e) =>
             setFormData((prev) => ({ ...prev, location: e.target.value }))
@@ -4081,33 +4156,33 @@ function CustomerDashboard({
   const [incomingShipments, setIncomingShipments] = useState([
     {
       id: "SH001",
-      supplier: "TechCorp Inc.",
-      transporter: "FastTrack Logistics",
+      supplier: "TechCorp India Pvt Ltd",
+      transporter: "FastTrack Logistics India",
       status: "in-transit",
       progress: 65,
       eta: "18 hours",
-      route: "NYC → Your Location",
+      route: "Delhi → Your Location",
       estimatedDelivery: "2025-02-16 14:30",
       trackingUpdates: [
         {
           time: "2025-02-14 09:00",
-          status: "Dispatched from NYC",
-          location: "New York, NY",
+          status: "Dispatched from Delhi",
+          location: "New Delhi, DL",
         },
         {
           time: "2025-02-14 15:30",
-          status: "In transit via I-80",
-          location: "Newark, NJ",
+          status: "In transit via NH48",
+          location: "Gurugram, HR",
         },
         {
           time: "2025-02-15 08:00",
           status: "Reached checkpoint",
-          location: "Pittsburgh, PA",
+          location: "Jaipur, RJ",
         },
         {
           time: "2025-02-15 14:00",
           status: "Currently en route",
-          location: "Columbus, OH",
+          location: "Udaipur, RJ",
         },
       ],
       deliveryType: "fast",
@@ -4116,23 +4191,23 @@ function CustomerDashboard({
     },
     {
       id: "SH004",
-      supplier: "Global Retail",
-      transporter: "Green Transport",
+      supplier: "Global Retail India",
+      transporter: "Green Transport India",
       status: "dispatched",
       progress: 25,
       eta: "2 days",
-      route: "CHI → Your Location",
+      route: "Mumbai → Your Location",
       estimatedDelivery: "2025-02-18 10:00",
       trackingUpdates: [
         {
           time: "2025-02-15 07:00",
-          status: "Dispatched from Chicago",
-          location: "Chicago, IL",
+          status: "Dispatched from Mumbai",
+          location: "Mumbai, MH",
         },
         {
           time: "2025-02-15 12:00",
           status: "Loading complete",
-          location: "Chicago, IL",
+          location: "Mumbai, MH",
         },
       ],
       deliveryType: "eco",
@@ -4141,23 +4216,23 @@ function CustomerDashboard({
     },
     {
       id: "SH007",
-      supplier: "Manufacturing Co.",
-      transporter: "Ocean Express",
+      supplier: "Manufacturing Co. India",
+      transporter: "Ocean Express India",
       status: "preparing",
       progress: 10,
       eta: "5 days",
-      route: "SEA → Your Location",
+      route: "Bengaluru → Your Location",
       estimatedDelivery: "2025-02-20 16:00",
       trackingUpdates: [
         {
           time: "2025-02-15 09:00",
           status: "Order confirmed",
-          location: "Seattle, WA",
+          location: "Bengaluru, KA",
         },
         {
           time: "2025-02-15 11:00",
           status: "Preparing for dispatch",
-          location: "Seattle, WA",
+          location: "Bengaluru, KA",
         },
       ],
       deliveryType: "eco",
@@ -4169,8 +4244,8 @@ function CustomerDashboard({
   const [completedShipments, setCompletedShipments] = useState([
     {
       id: "SH002",
-      supplier: "TechCorp Inc.",
-      transporter: "FastTrack Logistics",
+      supplier: "TechCorp India Pvt Ltd",
+      transporter: "FastTrack Logistics India",
       deliveredDate: "2025-02-10",
       rating: null,
       deliveryType: "fast",
@@ -4178,8 +4253,8 @@ function CustomerDashboard({
     },
     {
       id: "SH003",
-      supplier: "Global Retail",
-      transporter: "Green Transport",
+      supplier: "Global Retail India",
+      transporter: "Green Transport India",
       deliveredDate: "2025-02-08",
       rating: 5,
       deliveryType: "eco",
@@ -4248,7 +4323,7 @@ function CustomerDashboard({
       ],
       distance: "2,789 miles",
       duration: shipment.eta,
-      cost: `$${shipment.cost}`,
+  cost: `${formatCurrencyINR(shipment.cost)}`,
       carbonFootprint: `${shipment.carbonFootprint}t CO₂`,
       riskScore: 1,
     },
@@ -4508,7 +4583,7 @@ function CustomerDashboard({
                     <div>
                       <span className="text-muted-foreground">Cost:</span>
                       <div className="font-medium">
-                        ${shipment.cost.toLocaleString()}
+                        {formatCurrencyINR(shipment.cost)}
                       </div>
                     </div>
                   </div>
@@ -4995,7 +5070,7 @@ function CustomerDashboard({
                         </div>
                         <div className="p-3 bg-slate-50 rounded-lg">
                           <div className="text-slate-500 text-xs">Cost:</div>
-                          <div className="font-semibold text-slate-800">${shipment.cost.toLocaleString()}</div>
+                          <div className="font-semibold text-slate-800">{formatCurrencyINR(shipment.cost)}</div>
                         </div>
                       </div>
 
@@ -5396,7 +5471,7 @@ function TrackShipmentDialog({
       ],
       distance: "2,789 miles",
       duration: shipment.eta,
-      cost: `$${shipment.cost}`,
+  cost: `${formatCurrencyINR(shipment.cost)}`,
       carbonFootprint: `${shipment.carbonFootprint}t CO₂`,
       riskScore: 1,
     },

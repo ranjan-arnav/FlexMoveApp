@@ -500,10 +500,10 @@ export function Chatbot({
               {messages.length <= 1 && !isLoading && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {[
-                    "� Show my shipments",
+                    "📦 Show my shipments",
                     "⚡ Any issues?",
-                    "� Performance stats",
-                    "� Carbon footprint"
+                    "📈 Performance stats",
+                    "🌱 Carbon footprint"
                   ].map((suggestion) => (
                     <button
                       key={suggestion}

@@ -52,8 +52,9 @@ export function InteractiveMap({
   trackingMode = false,
   className = "",
 }: InteractiveMapProps) {
-  const [mapCenter, setMapCenter] = useState({ lat: 40.7128, lng: -74.006 })
-  const [zoom, setZoom] = useState(6)
+  // Default to India (approximate geographic center)
+  const [mapCenter, setMapCenter] = useState({ lat: 22.9734, lng: 78.6569 })
+  const [zoom, setZoom] = useState(5)
   const [animatedVehicles, setAnimatedVehicles] = useState(vehicles)
 
   // Simulate real-time vehicle movement
@@ -114,9 +115,9 @@ export function InteractiveMap({
   }
 
   return (
-    <Card className={`relative overflow-hidden ${className}`}>
+    <Card className={`relative overflow-hidden`}>
       {/* Map Container */}
-      <div className="relative h-96 border-2 border-gray-200 overflow-hidden">
+      <div className={`relative ${className || 'h-96'} border-2 border-gray-200 dark:border-slate-700 overflow-hidden`}>
         {/* Map Background Image */}
         <div 
           className="absolute inset-0 bg-cover bg-center transition-all duration-300"
@@ -217,7 +218,7 @@ export function InteractiveMap({
           <Button variant="outline" size="sm" onClick={() => setZoom((prev) => Math.max(prev - 1, 1))}>
             -
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setMapCenter({ lat: 40.7128, lng: -74.006 })}>
+          <Button variant="outline" size="sm" onClick={() => setMapCenter({ lat: 22.9734, lng: 78.6569 })}>
             <Navigation className="h-4 w-4" />
           </Button>
         </div>
@@ -232,7 +233,7 @@ export function InteractiveMap({
 
       {/* Route Information Panel */}
       {selectedRoute && routes.find((r) => r.id === selectedRoute) && (
-        <div className="p-4 border-t bg-gray-50">
+        <div className="p-4 border-t bg-gray-50 dark:bg-slate-900/50 dark:border-t-slate-700">
           {(() => {
             const route = routes.find((r) => r.id === selectedRoute)!
             return (
