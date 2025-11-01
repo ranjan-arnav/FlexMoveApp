@@ -1266,7 +1266,7 @@ export default function FlexMovePage() {
             <Button 
               variant="default" 
               onClick={() => setIsChatbotOpen(!isChatbotOpen)}
-              className="relative bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 hover:from-blue-700 hover:via-purple-700 hover:to-blue-700 text-white font-bold shadow-xl flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-2.5 rounded-full border-2 border-white/30 group overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-105"
+              className="hidden md:inline-flex relative bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 hover:from-blue-700 hover:via-purple-700 hover:to-blue-700 text-white font-bold shadow-xl items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-2.5 rounded-full border-2 border-white/30 group overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-105"
             >
               {/* Animated background glow */}
               <div className="absolute inset-0 bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400 opacity-0 group-hover:opacity-50 blur-xl transition-opacity duration-300"></div>
@@ -1354,6 +1354,15 @@ export default function FlexMovePage() {
           </div>
         ))}
       </div>
+
+      {/* Mobile FAB for Chatbot */}
+      <button
+        onClick={() => setIsChatbotOpen(true)}
+        aria-label="Ask Flexify"
+        className="sm:hidden fixed bottom-20 right-4 z-40 h-12 w-12 rounded-full bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 text-white shadow-2xl border-2 border-white/30 flex items-center justify-center active:scale-95"
+      >
+        <Sparkles className="h-5 w-5" />
+      </button>
 
       {/* Create Shipment Modal */}
       {showCreateShipment && (
@@ -2248,12 +2257,12 @@ function SupplierDashboard({
                     className="p-6 border-2 border-blue-100 dark:border-blue-900/50 rounded-xl bg-gradient-to-br from-white to-blue-50/30 dark:from-slate-800/50 dark:to-blue-950/30 shadow-sm hover:shadow-xl hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-300 space-y-4 relative overflow-hidden"
               >
                 {/* Flexify indicator */}
-                <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/50 rounded-full text-xs font-semibold text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700">
+                <div className="absolute top-2 right-2 hidden sm:flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/50 rounded-full text-xs font-semibold text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700">
                   <Sparkles className="h-3 w-3" />
                   <span>Flexify Ready</span>
                 </div>
                 
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-4">
                         <div className={`p-3 rounded-xl ${
                           shipment.mode === 'truck' ? 'bg-blue-100 dark:bg-blue-900/50' :
@@ -2286,7 +2295,7 @@ function SupplierDashboard({
                           {shipment.status.replace("-", " ").toUpperCase()}
                     </Badge>
                   </div>
-                  <div className="text-right">
+      <div className="text-right sm:text-right">
                         <div className="text-lg font-bold text-slate-800 dark:text-slate-200">{shipment.eta}</div>
                         <div className="text-sm text-slate-600 dark:text-slate-400">ETA</div>
                   </div>
@@ -2345,7 +2354,7 @@ function SupplierDashboard({
                   </div>
                 )}
 
-                    <div className="flex gap-2 pt-2">
+                    <div className="flex flex-wrap gap-2 pt-2">
                       <Button size="sm" variant="outline" className="flex-1 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:border-blue-300 dark:hover:border-blue-700 dark:text-slate-200">
                         <MapPin className="h-4 w-4 mr-1" />
                         Track
@@ -2358,7 +2367,7 @@ function SupplierDashboard({
                         message={`Tell me about shipment ${shipment.id}. What's its current status, estimated delivery time, and any potential risks?`}
                         context={{ shipmentId: shipment.id, shipment }}
                         onClick={onAIInsights}
-                        className="flex-1 hover:bg-purple-50 dark:hover:bg-purple-900/30 hover:border-purple-300 dark:hover:border-purple-700"
+                        className="flex-1 min-w-[110px] sm:min-w-0 hover:bg-purple-50 dark:hover:bg-purple-900/30 hover:border-purple-300 dark:hover:border-purple-700"
                       />
                       <Button size="sm" variant="outline" className="flex-1 hover:bg-purple-50 dark:hover:bg-purple-900/30 hover:border-purple-300 dark:hover:border-purple-700 dark:text-slate-200">
                         <Users className="h-4 w-4 mr-1" />
@@ -3425,7 +3434,7 @@ function TransporterDashboard({
               <div className="space-y-4">
                 {pendingRequests.map((request) => (
                   <div key={request.id} className="p-4 border rounded-lg">
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-3">
                       <div>
                         <div className="font-medium">{request.id}</div>
                         <div className="text-sm text-muted-foreground">
@@ -4635,7 +4644,7 @@ function CustomerDashboard({
                     </div>
                   )}
 
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       size="sm"
                       variant="outline"
@@ -4655,6 +4664,7 @@ function CustomerDashboard({
                       context={{ shipmentId: shipment.id, shipment }}
                       onClick={onAIInsights}
                       size="sm"
+                      className="flex-1 min-w-[110px] sm:min-w-0"
                     />
                   </div>
                 </div>
