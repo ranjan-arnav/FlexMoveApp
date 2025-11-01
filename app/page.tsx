@@ -1294,7 +1294,7 @@ export default function FlexMovePage() {
       </header>
 
       {/* Dashboard Content */}
-      <main className="p-3 sm:p-4 md:p-6">
+  <main className="container mx-auto max-w-screen-2xl p-3 sm:p-4 md:p-6">
         {currentUser === "supplier" && (
           <SupplierDashboard 
             onCreateShipment={handleCreateShipment}
@@ -3283,11 +3283,11 @@ function TransporterDashboard({
               <CardDescription className="text-slate-600 dark:text-slate-400">Monitor your vehicles in real-time with live updates</CardDescription>
         </CardHeader>
             <CardContent className="p-6">
-          <InteractiveMap
+      <InteractiveMap
             vehicles={trackingVehicles}
             showVehicles={true}
             trackingMode={true}
-                className="h-96 rounded-lg"
+        className="h-64 sm:h-80 md:h-96 rounded-lg"
           />
         </CardContent>
       </Card>
@@ -4630,7 +4630,7 @@ function CustomerDashboard({
                         selectedRoute={`route-${shipment.id}`}
                         showVehicles={true}
                         trackingMode={true}
-                        className="h-64"
+                        className="h-64 sm:h-80 md:h-96"
                       />
                     </div>
                   )}
@@ -5547,7 +5547,7 @@ function TrackShipmentDialog({
                   selectedRoute={`track-${selectedShipment.id}`}
                   showVehicles={true}
                   trackingMode={true}
-                  className="h-80"
+                  className="h-64 sm:h-80 md:h-96"
                 />
               </div>
 

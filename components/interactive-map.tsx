@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { cn } from "@/lib/utils"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -117,7 +118,10 @@ export function InteractiveMap({
   return (
     <Card className={`relative overflow-hidden`}>
       {/* Map Container */}
-      <div className={`relative ${className || 'h-96'} border-2 border-gray-200 dark:border-slate-700 overflow-hidden`}>
+      <div className={cn(
+        "relative h-64 sm:h-80 md:h-96 border-2 border-gray-200 dark:border-slate-700 overflow-hidden",
+        className
+      )}>
         {/* Map Background Image */}
         <div 
           className="absolute inset-0 bg-cover bg-center transition-all duration-300"

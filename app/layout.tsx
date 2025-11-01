@@ -1,5 +1,5 @@
 import type React from "react"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
 import "leaflet/dist/leaflet.css";
@@ -15,6 +15,14 @@ export const metadata: Metadata = {
     apple: "/images/logo.png",
     shortcut: "/images/logo.png"
   }
+}
+
+// Ensure proper mobile scaling and portrait friendliness
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
 }
 
 export default function RootLayout({
