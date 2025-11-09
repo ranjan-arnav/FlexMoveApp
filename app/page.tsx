@@ -1518,7 +1518,7 @@ function RerouteDialog({
                   }`}
                   onClick={() => route.status === 'available' && onRouteSelection(route.id)}
                 >
-                  <div className="flex items-start justify-between">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h4 className="font-semibold text-lg">{route.name}</h4>
@@ -1530,7 +1530,7 @@ function RerouteDialog({
                         </Badge>
                       </div>
                       
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                         <div className="flex items-center gap-2">
                           <MapPin className="h-4 w-4 text-blue-600" />
                           <span>{route.distance} km</span>
@@ -1556,7 +1556,7 @@ function RerouteDialog({
                           e.stopPropagation();
                           onRouteSelection(route.id);
                         }}
-                        className="ml-4 bg-blue-600 hover:bg-blue-700 text-white"
+                        className="w-full md:w-auto md:ml-4 bg-blue-600 hover:bg-blue-700 text-white"
                       >
                         Select Route
                       </Button>
@@ -1643,7 +1643,7 @@ function NewOrderDialog({
                     }`}
                     onClick={() => onSupplierSelection(supplier.id)}
                   >
-                    <div className="flex items-start justify-between">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <h4 className="font-semibold text-lg">{supplier.name}</h4>
@@ -1658,7 +1658,7 @@ function NewOrderDialog({
                           )}
                         </div>
                         
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-3">
                           <div>
                             <span className="font-medium">Location:</span> {supplier.location}
                           </div>
@@ -1683,7 +1683,7 @@ function NewOrderDialog({
                       </div>
                       
                       {selectedSupplier === supplier.id && (
-                        <div className="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center ml-4">
+                        <div className="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center self-end md:self-start md:ml-4">
                           <span className="text-white text-sm">✓</span>
                         </div>
                       )}
@@ -2021,24 +2021,24 @@ function SupplierDashboard({
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5 mb-6 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 p-1 rounded-lg border dark:border-slate-700 gap-1">
+  <TabsList className="flex w-full overflow-x-auto gap-1 mb-6 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 p-1 rounded-lg border dark:border-slate-700 sm:grid sm:grid-cols-3 md:grid-cols-5">
           <TabsTrigger 
             value="overview" 
-            className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
+            className="flex-1 min-w-[120px] sm:min-w-0 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
           >
             <Package className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
             <span className="hidden xs:inline">Overview</span>
           </TabsTrigger>
           <TabsTrigger 
             value="operations" 
-            className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
+            className="flex-1 min-w-[120px] sm:min-w-0 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
           >
             <Truck className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
             <span className="hidden xs:inline">Operations</span>
           </TabsTrigger>
           <TabsTrigger 
             value="disruptions" 
-            className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-red-600 dark:data-[state=active]:text-red-400 dark:text-slate-300 font-semibold transition-all duration-200 relative text-xs sm:text-sm col-span-2 sm:col-span-1"
+            className="flex-1 min-w-[120px] sm:min-w-0 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-red-600 dark:data-[state=active]:text-red-400 dark:text-slate-300 font-semibold transition-all duration-200 relative text-xs sm:text-sm col-span-2 sm:col-span-1"
           >
             <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
             <span className="hidden xs:inline">Disruptions</span>
@@ -2050,14 +2050,14 @@ function SupplierDashboard({
           </TabsTrigger>
           <TabsTrigger 
             value="analytics" 
-            className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-green-600 dark:data-[state=active]:text-green-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
+            className="flex-1 min-w-[120px] sm:min-w-0 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-green-600 dark:data-[state=active]:text-green-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
           >
             <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
             <span className="hidden xs:inline">Analytics</span>
           </TabsTrigger>
           <TabsTrigger 
             value="settings" 
-            className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
+            className="flex-1 min-w-[120px] sm:min-w-0 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
           >
             <Settings className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
             <span className="hidden xs:inline">Settings</span>
@@ -2199,7 +2199,7 @@ function SupplierDashboard({
             ].map((shipment) => (
               <div
                 key={shipment.id}
-                    className="flex items-center justify-between p-4 border rounded-lg bg-white dark:bg-slate-800/50 dark:border-slate-700 shadow-sm hover:shadow-md transition-all duration-200"
+                    className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between p-4 border rounded-lg bg-white dark:bg-slate-800/50 dark:border-slate-700 shadow-sm hover:shadow-md transition-all duration-200"
                   >
                     <div className="flex items-center gap-4">
                       <div className={`p-2 rounded-lg ${
@@ -2216,7 +2216,7 @@ function SupplierDashboard({
                         <div className="text-sm text-slate-600 dark:text-slate-400">{shipment.customer}</div>
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="text-left sm:text-right w-full sm:w-auto">
                       <Badge 
                         variant={
                           shipment.status === "Delivered" ? "default" :
@@ -2301,7 +2301,7 @@ function SupplierDashboard({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                       <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
                         <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
                         <div>
@@ -2433,7 +2433,7 @@ function SupplierDashboard({
               {transporters.map((transporter) => (
                 <div
                   key={transporter.id}
-                      className="flex items-center justify-between p-4 bg-white dark:bg-slate-800/50 rounded-lg shadow-sm dark:border dark:border-slate-700"
+                      className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between p-4 bg-white dark:bg-slate-800/50 rounded-lg shadow-sm dark:border dark:border-slate-700"
                 >
                   <div className="flex items-center gap-3">
                         <div className="p-2 bg-indigo-100 dark:bg-indigo-900/50 rounded-lg">
@@ -2453,7 +2453,7 @@ function SupplierDashboard({
                       </Badge>
                     )}
                   </div>
-                  <div className="text-right">
+                  <div className="text-left sm:text-right w-full sm:w-auto">
                         <div className="font-bold text-lg text-slate-800 dark:text-slate-200">{transporter.rating}/5.0</div>
                         <div className="text-xs text-slate-500 dark:text-slate-400">Rating</div>
                   </div>
@@ -3160,31 +3160,31 @@ function TransporterDashboard({
 
       {/* Enhanced Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 mb-6 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 p-1 rounded-lg dark:border dark:border-slate-700 gap-1">
+        <TabsList className="flex w-full overflow-x-auto gap-1 mb-6 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 p-1 rounded-lg dark:border dark:border-slate-700 sm:grid sm:grid-cols-4">
           <TabsTrigger 
             value="overview" 
-            className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-green-600 dark:data-[state=active]:text-green-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
+            className="flex-1 min-w-[120px] sm:min-w-0 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-green-600 dark:data-[state=active]:text-green-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
           >
             <Truck className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
             <span className="hidden xs:inline">Overview</span>
           </TabsTrigger>
           <TabsTrigger 
             value="fleet" 
-            className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
+            className="flex-1 min-w-[120px] sm:min-w-0 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
           >
             <Ship className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
             <span className="hidden xs:inline">Fleet</span>
           </TabsTrigger>
           <TabsTrigger 
             value="shipments" 
-            className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
+            className="flex-1 min-w-[120px] sm:min-w-0 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
           >
             <Package className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
             <span className="hidden xs:inline">Shipments</span>
           </TabsTrigger>
           <TabsTrigger 
             value="analytics" 
-            className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
+            className="flex-1 min-w-[120px] sm:min-w-0 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
           >
             <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
             <span className="hidden xs:inline">Analytics</span>
@@ -3312,24 +3312,24 @@ function TransporterDashboard({
         </CardHeader>
             <CardContent className="p-6">
           <Tabs defaultValue="vehicles" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 p-1 rounded-lg dark:border dark:border-slate-700">
+                <TabsList className="flex w-full overflow-x-auto gap-1 bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 p-1 rounded-lg dark:border dark:border-slate-700 sm:grid sm:grid-cols-3">
                   <TabsTrigger 
                     value="vehicles" 
-                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-400 dark:text-slate-300 font-semibold transition-all duration-200"
+                    className="flex-1 min-w-[140px] sm:min-w-0 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-400 dark:text-slate-300 font-semibold transition-all duration-200"
                   >
                     <Truck className="h-4 w-4 mr-2" />
                     Vehicles
                   </TabsTrigger>
                   <TabsTrigger 
                     value="requests" 
-                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 dark:text-slate-300 font-semibold transition-all duration-200"
+                    className="flex-1 min-w-[140px] sm:min-w-0 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 dark:text-slate-300 font-semibold transition-all duration-200"
                   >
                     <Package className="h-4 w-4 mr-2" />
                     Requests
                   </TabsTrigger>
                   <TabsTrigger 
                     value="shipments" 
-                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400 dark:text-slate-300 font-semibold transition-all duration-200"
+                    className="flex-1 min-w-[140px] sm:min-w-0 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400 dark:text-slate-300 font-semibold transition-all duration-200"
                   >
                     <BarChart3 className="h-4 w-4 mr-2" />
                     Active Shipments
@@ -3342,7 +3342,7 @@ function TransporterDashboard({
                   const VehicleIcon = getVehicleIcon(vehicle.type);
                   return (
                     <div key={vehicle.id} className="p-4 border rounded-lg">
-                      <div className="flex items-center justify-between mb-3">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-3">
                         <div className="flex items-center gap-3">
                           <div
                             className={`p-2 rounded-lg ${
@@ -3376,7 +3376,7 @@ function TransporterDashboard({
                             </Badge>
                           )}
                         </div>
-                        <div className="text-right">
+                        <div className="text-left sm:text-right w-full sm:w-auto">
                           <div
                             className={`text-sm font-medium capitalize ${getStatusColor(
                               vehicle.status
@@ -3390,7 +3390,7 @@ function TransporterDashboard({
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                         <div>
                           <span className="text-muted-foreground">
                             Fuel Efficiency:
@@ -3457,7 +3457,7 @@ function TransporterDashboard({
                       </Badge>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
                       <div>
                         <span className="text-muted-foreground">Weight:</span>
                         <div className="font-medium">{request.weight}</div>
@@ -4381,31 +4381,31 @@ function CustomerDashboard({
 
       {/* Enhanced Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 mb-6 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 p-1 rounded-lg border dark:border-slate-700 gap-1">
+        <TabsList className="flex w-full overflow-x-auto gap-1 mb-6 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 p-1 rounded-lg border dark:border-slate-700 sm:grid sm:grid-cols-4">
           <TabsTrigger 
             value="overview" 
-            className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
+            className="flex-1 min-w-[120px] sm:min-w-0 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
           >
             <Package className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
             <span className="hidden xs:inline">Overview</span>
           </TabsTrigger>
           <TabsTrigger 
             value="tracking" 
-            className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
+            className="flex-1 min-w-[120px] sm:min-w-0 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
           >
             <MapPin className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
             <span className="hidden xs:inline">Tracking</span>
           </TabsTrigger>
           <TabsTrigger 
             value="preferences" 
-            className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-green-600 dark:data-[state=active]:text-green-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
+            className="flex-1 min-w-[120px] sm:min-w-0 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-green-600 dark:data-[state=active]:text-green-400 dark:text-slate-300 font-semibold transition-all duration-200 text-xs sm:text-sm"
           >
             <Leaf className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
             Preferences
           </TabsTrigger>
           <TabsTrigger 
             value="analytics" 
-            className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 dark:text-slate-300 font-semibold transition-all duration-200"
+            className="flex-1 min-w-[120px] sm:min-w-0 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-orange-600 dark:data-[state=active]:text-orange-400 dark:text-slate-300 font-semibold transition-all duration-200"
           >
             <BarChart3 className="h-4 w-4 mr-2" />
             Analytics
@@ -4511,9 +4511,9 @@ function CustomerDashboard({
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="active" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 dark:bg-slate-800">
-              <TabsTrigger value="active" className="dark:data-[state=active]:bg-slate-700 dark:text-slate-300">Active Shipments</TabsTrigger>
-              <TabsTrigger value="completed" className="dark:data-[state=active]:bg-slate-700 dark:text-slate-300">Completed Orders</TabsTrigger>
+            <TabsList className="flex w-full overflow-x-auto gap-1 dark:bg-slate-800 rounded-lg p-1 sm:grid sm:grid-cols-2">
+              <TabsTrigger value="active" className="flex-1 min-w-[140px] sm:min-w-0 dark:data-[state=active]:bg-slate-700 dark:text-slate-300">Active Shipments</TabsTrigger>
+              <TabsTrigger value="completed" className="flex-1 min-w-[140px] sm:min-w-0 dark:data-[state=active]:bg-slate-700 dark:text-slate-300">Completed Orders</TabsTrigger>
             </TabsList>
 
             <TabsContent value="active" className="space-y-4">
@@ -4522,7 +4522,7 @@ function CustomerDashboard({
                   key={shipment.id}
                   className="p-4 border dark:border-slate-700 dark:bg-slate-800/50 rounded-lg space-y-4"
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-4">
                       <div>
                         <div className="font-medium">{shipment.id}</div>
@@ -4556,7 +4556,7 @@ function CustomerDashboard({
                         {shipment.deliveryType === "eco" ? "Eco" : "Fast"}
                       </Badge>
                     </div>
-                    <div className="text-right">
+                    <div className="text-left sm:text-right w-full sm:w-auto">
                       <div className="text-sm font-medium">
                         ETA: {shipment.eta}
                       </div>
@@ -4574,7 +4574,7 @@ function CustomerDashboard({
                     <Progress value={shipment.progress} className="h-2" />
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                     <div>
                       <span className="text-muted-foreground">
                         Transporter:
@@ -4769,24 +4769,24 @@ function CustomerDashboard({
               onValueChange={setDeliveryPreference}
               className="w-full"
             >
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="fast">Fast Delivery</TabsTrigger>
-                <TabsTrigger value="eco">Eco Delivery</TabsTrigger>
+              <TabsList className="flex w-full overflow-x-auto gap-1 rounded-lg p-1 bg-muted/40 sm:grid sm:grid-cols-2">
+                <TabsTrigger value="fast" className="flex-1 min-w-[140px] sm:min-w-0">Fast Delivery</TabsTrigger>
+                <TabsTrigger value="eco" className="flex-1 min-w-[140px] sm:min-w-0">Eco Delivery</TabsTrigger>
               </TabsList>
               <TabsContent value="fast" className="space-y-4">
                 <div className="text-sm text-muted-foreground">
                   Priority shipping with faster delivery times
                 </div>
                 <div className="space-y-2">
-                  <div className="flex justify-between">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                     <span>Delivery Time:</span>
                     <span className="font-medium">1-2 days</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                     <span>Carbon Impact:</span>
                     <span className="text-destructive">Higher</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                     <span>Cost:</span>
                     <span className="font-medium">Premium (+15-25%)</span>
                   </div>
@@ -4803,15 +4803,15 @@ function CustomerDashboard({
                   Environmentally friendly shipping options
                 </div>
                 <div className="space-y-2">
-                  <div className="flex justify-between">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                     <span>Delivery Time:</span>
                     <span className="font-medium">3-5 days</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                     <span>Carbon Impact:</span>
                     <span className="text-primary">Lower (-60%)</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                     <span>Cost:</span>
                     <span className="font-medium">Standard</span>
                   </div>
@@ -4985,17 +4985,17 @@ function CustomerDashboard({
             </CardHeader>
             <CardContent className="p-6">
               <Tabs defaultValue="active" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 p-1 rounded-lg">
+                <TabsList className="flex w-full overflow-x-auto gap-1 bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 p-1 rounded-lg sm:grid sm:grid-cols-2">
                   <TabsTrigger 
                     value="active" 
-                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 dark:text-slate-300 font-semibold transition-all duration-200"
+                    className="flex-1 min-w-[140px] sm:min-w-0 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 dark:text-slate-300 font-semibold transition-all duration-200"
                   >
                     <Package className="h-4 w-4 mr-2" />
                     Active Shipments
                   </TabsTrigger>
                   <TabsTrigger 
                     value="completed" 
-                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-green-600 dark:data-[state=active]:text-green-400 dark:text-slate-300 font-semibold transition-all duration-200"
+                    className="flex-1 min-w-[140px] sm:min-w-0 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-green-600 dark:data-[state=active]:text-green-400 dark:text-slate-300 font-semibold transition-all duration-200"
                   >
                     <CheckCircle className="h-4 w-4 mr-2" />
                     Completed Orders
@@ -5008,8 +5008,8 @@ function CustomerDashboard({
                       key={shipment.id}
                       className="p-6 border dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800/50 shadow-sm hover:shadow-lg transition-all duration-300 space-y-4"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-4 flex-wrap">
                           <div className={`p-3 rounded-xl ${
                             shipment.deliveryType === 'eco' ? 'bg-green-100 dark:bg-green-900/30' : 'bg-blue-100 dark:bg-blue-900/30'
                           }`}>
@@ -5047,7 +5047,7 @@ function CustomerDashboard({
                             {shipment.deliveryType === "eco" ? "Eco" : "Fast"}
                           </Badge>
                         </div>
-                        <div className="text-right">
+                        <div className="text-left sm:text-right w-full sm:w-auto">
                           <div className="text-lg font-bold text-slate-800 dark:text-slate-200">
                             ETA: {shipment.eta}
                           </div>
@@ -5069,7 +5069,7 @@ function CustomerDashboard({
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                         <div className="p-3 bg-slate-50 rounded-lg">
                           <div className="text-slate-500 text-xs">Transporter:</div>
                           <div className="font-semibold text-slate-800">{shipment.transporter}</div>
@@ -5084,7 +5084,7 @@ function CustomerDashboard({
                         </div>
                       </div>
 
-                      <div className="flex gap-2">
+                      <div className="flex flex-col gap-2 sm:flex-row">
                         <Button size="sm" variant="outline" className="flex-1 hover:bg-blue-50 hover:border-blue-300">
                           <MapPin className="h-4 w-4 mr-1" />
                           View Map
@@ -5101,13 +5101,13 @@ function CustomerDashboard({
                 <TabsContent value="completed" className="space-y-4">
                   {completedShipments.map((shipment) => (
                     <div key={shipment.id} className="p-4 border rounded-lg bg-white shadow-sm">
-                      <div className="flex items-center justify-between mb-3">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
                         <div>
                           <div className="font-semibold text-slate-800">{shipment.id}</div>
                           <div className="text-sm text-slate-600">{shipment.supplier}</div>
                           <div className="text-xs text-slate-500">Delivered: {shipment.deliveredDate}</div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           {shipment.onTime && (
                             <Badge variant="outline" className="text-green-600 border-green-300 bg-green-50">
                               <CheckCircle className="h-3 w-3 mr-1" />
@@ -5189,17 +5189,17 @@ function CustomerDashboard({
                   onValueChange={setDeliveryPreference}
                   className="w-full"
                 >
-                  <TabsList className="grid w-full grid-cols-2 bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 p-1 rounded-lg">
+                  <TabsList className="flex w-full overflow-x-auto gap-1 bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 p-1 rounded-lg sm:grid sm:grid-cols-2">
                     <TabsTrigger 
                       value="fast" 
-                      className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-600 data-[state=active]:shadow-md data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 dark:text-slate-300 font-semibold transition-all duration-200"
+                      className="flex-1 min-w-[140px] sm:min-w-0 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-600 data-[state=active]:shadow-md data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 dark:text-slate-300 font-semibold transition-all duration-200"
                     >
                       <Zap className="h-4 w-4 mr-2" />
                       Fast Delivery
                     </TabsTrigger>
                     <TabsTrigger 
                       value="eco" 
-                      className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-600 data-[state=active]:shadow-md data-[state=active]:text-green-600 dark:data-[state=active]:text-green-400 dark:text-slate-300 font-semibold transition-all duration-200"
+                      className="flex-1 min-w-[140px] sm:min-w-0 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-600 data-[state=active]:shadow-md data-[state=active]:text-green-600 dark:data-[state=active]:text-green-400 dark:text-slate-300 font-semibold transition-all duration-200"
                     >
                       <Leaf className="h-4 w-4 mr-2" />
                       Eco Delivery
@@ -5208,15 +5208,15 @@ function CustomerDashboard({
                   <TabsContent value="fast" className="space-y-4 mt-4">
                     <div className="text-sm text-slate-600 dark:text-slate-400">Priority shipping with faster delivery times</div>
                     <div className="space-y-2 dark:text-slate-300">
-                      <div className="flex justify-between">
+                      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                         <span>Delivery Time:</span>
                         <span className="font-medium">1-2 days</span>
                       </div>
-                      <div className="flex justify-between">
+                      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                         <span>Carbon Impact:</span>
                         <span className="text-red-600 dark:text-red-400">Higher</span>
                       </div>
-                      <div className="flex justify-between">
+                      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                         <span>Cost:</span>
                         <span className="font-medium">Premium (+15-25%)</span>
                       </div>
@@ -5231,15 +5231,15 @@ function CustomerDashboard({
                   <TabsContent value="eco" className="space-y-4 mt-4">
                     <div className="text-sm text-slate-600 dark:text-slate-400">Environmentally friendly shipping options</div>
                     <div className="space-y-2 dark:text-slate-300">
-                      <div className="flex justify-between">
+                      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                         <span>Delivery Time:</span>
                         <span className="font-medium">3-5 days</span>
                       </div>
-                      <div className="flex justify-between">
+                      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                         <span>Carbon Impact:</span>
                         <span className="text-green-600 dark:text-green-400">Lower (-60%)</span>
                       </div>
-                      <div className="flex justify-between">
+                      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                         <span>Cost:</span>
                         <span className="font-medium">Standard</span>
                       </div>
@@ -5273,7 +5273,7 @@ function CustomerDashboard({
                 <div className="space-y-4">
                   {suppliers.map((supplier) => (
                     <div key={supplier.id} className="space-y-2">
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                           <div className="font-semibold text-slate-800">{supplier.id}</div>
                           <div className="text-sm text-slate-600">
