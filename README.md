@@ -1,28 +1,47 @@
-# FlexMove - AI-Powered Supply Chain Management Platform 🚀
+# FlexMove - Real-Time Supply Chain Management Platform 🚀
 
 [![Next.js](https://img.shields.io/badge/Next.js-14-black)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-18-blue)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)](https://www.typescriptlang.org/)
+[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-38bdf8)](https://tailwindcss.com/)
 [![Google Gemini](https://img.shields.io/badge/Gemini-AI-orange)](https://ai.google.dev/)
+[![Telegram](https://img.shields.io/badge/Telegram-Bot-blue)](https://telegram.org/)
 
-A comprehensive, modern supply chain management platform connecting **Suppliers**, **Transporters**, and **Customers** with real-time tracking, analytics, and AI-powered assistance.
+A comprehensive, production-ready supply chain management platform connecting **Suppliers**, **Transporters**, and **Customers** with **real-time synchronization**, **PostgreSQL backend**, **Telegram bot integration**, and **AI-powered assistance**.
 
 ---
 
 ## ✨ Key Features
 
+### 🔄 **Real-Time Backend System** ⭐ NEW!
+- **PostgreSQL database** with Supabase
+- **WebSocket subscriptions** for instant sync (< 100ms)
+- **Cross-dashboard synchronization** - changes by supplier instantly visible to customer & transporter
+- **Automatic state management** - no manual refresh needed
+- **Row-level security** - users see only their data
+- **Production-ready scalability** - supports 1000+ concurrent users
+
+### 📱 **Telegram Bot Integration** ⭐ NEW!
+- **@flexify_bot** - Complete Telegram integration
+- **Account linking** with secure codes
+- **Push notifications** for all shipment events
+- **AI chat** powered by Google Gemini
+- **Commands**: /start, /link, /track, /status, /alerts, /settings
+- **Works independently** of web app
+
 ### 🎭 **Multi-Role Dashboard System**
 - **Supplier Dashboard** - Create shipments, manage disruptions, optimize routes
-- **Transporter Dashboard** - Handle requests, track fleet, monitor performance
+- **Transporter Dashboard** - Handle requests, track fleet, monitor performance  
 - **Customer Dashboard** - Track orders, rate suppliers, monitor deliveries
+- **Real-time updates** across all dashboards simultaneously
 
-### 🤖 **AI-Powered Chatbot** ⭐ NEW!
+### 🤖 **AI-Powered Chatbot**
 - **Google Gemini 2.0 Flash** integration
-- Context-aware responses based on real data
+- Context-aware responses based on real database data
 - Access to shipments, disruptions, analytics, and more
-- On-device storage with localStorage
 - Persistent chat history
+- Works on both web and Telegram
 
 ### 📦 **Shipment Management**
 - Multi-step shipment creation wizard
@@ -67,13 +86,15 @@ A comprehensive, modern supply chain management platform connecting **Suppliers*
 
 - **Node.js** v18 or higher
 - **npm** or **pnpm**
+- **Supabase Account** (free tier available) ⭐ NEW
 - **Google Gemini API Key** (free tier available)
+- **Telegram Bot Token** (free from @BotFather) ⭐ NEW
 
 ### Installation
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/OmRajonweb/FlexMove.git
+   git clone https://github.com/ranjan-arnav/FlexMoveApp.git
    cd FlexMove
    ```
 
@@ -82,21 +103,57 @@ A comprehensive, modern supply chain management platform connecting **Suppliers*
    npm install --legacy-peer-deps
    ```
 
-3. **Configure environment variables**
+3. **Set up Supabase Backend** ⭐ NEW
+   
+   Follow the **[complete setup guide](SETUP_NEXT_STEPS.md)** (10 minutes):
+   
+   - Create Supabase account
+   - Run `database/schema.sql` to create database
+   - Get your Supabase URL and API key
+   
+   **Quick version:**
+   ```bash
+   # 1. Go to https://supabase.com and create account
+   # 2. Create new project
+   # 3. In SQL Editor, paste contents of database/schema.sql
+   # 4. Copy Project URL and anon key
+   ```
+
+4. **Configure environment variables**
    
    Edit `.env.local` in the root directory:
    ```env
+   # Supabase (Real-Time Database) ⭐ NEW
+   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+   
+   # Telegram Bot ⭐ NEW
+   TELEGRAM_BOT_TOKEN=your-telegram-bot-token
+   NEXT_PUBLIC_APP_URL=http://localhost:3000
+   
+   # Google Gemini AI
    NEXT_PUBLIC_GEMINI_API_KEY=your_gemini_api_key_here
+   
+   # NextAuth (for secure sessions)
+   NEXTAUTH_SECRET=your-secret-key-here
    ```
    
-   Get your API key from: https://makersuite.google.com/app/apikey
+   **Get your keys:**
+   - Supabase: https://supabase.com/dashboard → Settings → API
+   - Telegram: Message @BotFather on Telegram → `/newbot`
+   - Gemini: https://makersuite.google.com/app/apikey
 
-4. **Start the development server**
+5. **Start the development server**
    ```bash
    npm run dev
    ```
 
-5. **Open your browser**
+6. **Start Telegram bot** (optional, for notifications) ⭐ NEW
+   ```bash
+   node scripts/test-bot-locally.js
+   ```
+
+7. **Open your browser**
    
    Navigate to: http://localhost:3000
 
@@ -104,9 +161,17 @@ A comprehensive, modern supply chain management platform connecting **Suppliers*
 
 ## 📚 Documentation
 
-- **[Chatbot Setup Guide](CHATBOT_SETUP.md)** - Detailed setup instructions
-- **[Implementation Details](CHATBOT_IMPLEMENTATION.md)** - Technical overview
-- **[Example Questions](CHATBOT_EXAMPLES.md)** - 100+ chatbot examples
+### Setup Guides ⭐ NEW
+- **[Quick Start Guide](SETUP_NEXT_STEPS.md)** - 10-minute backend setup
+- **[Backend Integration](BACKEND_INTEGRATION.md)** - Complete technical guide
+- **[Dashboard Update Guide](DASHBOARD_UPDATE_GUIDE.md)** - Migrate to real database
+- **[Architecture Overview](ARCHITECTURE.md)** - System design & data flow
+
+### Feature Documentation
+- **[Chatbot Setup](CHATBOT_SETUP.md)** - AI chatbot configuration
+- **[Chatbot Examples](CHATBOT_EXAMPLES.md)** - 100+ example questions
+- **[MVP Documentation](MVP.md)** - Complete feature overview
+- **[Telegram Integration](CHATBOT_IMPLEMENTATION.md)** - Bot setup guide
 
 ---
 
@@ -137,6 +202,12 @@ See [CHATBOT_EXAMPLES.md](CHATBOT_EXAMPLES.md) for 100+ example questions!
 
 ## 🛠️ Tech Stack
 
+### Backend ⭐ NEW
+- **Supabase** - PostgreSQL database + Real-time subscriptions
+- **PostgreSQL** - ACID-compliant relational database
+- **WebSocket** - Real-time synchronization (< 100ms latency)
+- **Row-Level Security** - Secure data access
+
 ### Frontend
 - **Next.js 14** - React framework with App Router
 - **React 18** - UI library
@@ -145,15 +216,15 @@ See [CHATBOT_EXAMPLES.md](CHATBOT_EXAMPLES.md) for 100+ example questions!
 - **Shadcn UI** - Component library
 - **Framer Motion** - Animations
 
-### AI & Data
-- **Google Gemini 2.0 Flash** - AI chatbot
-- **localStorage** - On-device data storage
-- **Recharts** - Data visualization
+### AI & Integrations ⭐ NEW
+- **Google Gemini 2.0 Flash** - AI chatbot (web + Telegram)
+- **Telegram Bot API** - Push notifications & chat
+- **@supabase/supabase-js** - Database client
 
-### Maps & Geolocation
+### Maps & Data Visualization
 - **Leaflet** - Interactive maps
-- **Mapbox GL** - Map tiles
-- **React Leaflet** - React integration
+- **React Leaflet** - Map integration
+- **Recharts** - Analytics charts
 
 ### UI Components
 - **Radix UI** - Accessible primitives

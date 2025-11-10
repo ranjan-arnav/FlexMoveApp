@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import "leaflet/dist/leaflet.css";
 import { Button } from "@/components/ui/button";
 import {
@@ -58,7 +59,8 @@ import {
   Check,
   Sparkles,
   Moon,
-  Sun
+  Sun,
+  Bell
 } from "lucide-react";
 import Image from "next/image";
 import { AnalyticsCharts } from "@/components/analytics-charts";
@@ -66,10 +68,13 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLe
 import { Bar, BarChart, Line, LineChart, Pie, PieChart, CartesianGrid, XAxis, YAxis, Tooltip as RTooltip, Legend as RLegend, Cell } from "recharts";
 import { Chatbot } from "@/components/chatbot";
 import { AIInsightsButton } from "@/components/ai-insights-button";
+import { TelegramLink } from "@/components/telegram-link";
 import { storage } from "@/lib/storage";
 import { cn, formatCurrencyINR } from "@/lib/utils";
+import { useShipments, useSuppliers, useTransporters, useCustomers, useNotifications } from "@/hooks/use-database";
+import { DatabaseService } from "@/lib/database";
 
-type UserRole = "supplier" | "transporter" | "customer" | null;
+type UserRole = "supplier" | "transporter" | "customer" | "admin" | null;
 
 type TransportMode = "truck" | "ship" | "air" | "ev";
 type ShipmentStatus =
@@ -119,18 +124,227 @@ interface DisruptionAlert {
 }
 
 export default function FlexMovePage() {
-  const [currentUser, setCurrentUser] = useState<UserRole>(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // Initialize state from URL parameters IMMEDIATELY to prevent flash
+  const userParam = searchParams.get('user');
+  const tabParam = searchParams.get('tab');
+  
+  const [currentUser, setCurrentUser] = useState<UserRole>(() => {
+    // Initialize from URL on first render
+    if (userParam && ['customer', 'supplier', 'transporter'].includes(userParam)) {
+      console.log('⚡ Initializing user from URL:', userParam);
+      return userParam as UserRole;
+    }
+    return null;
+  });
+  
+  const [currentTab, setCurrentTab] = useState<string>(() => {
+    // Initialize from URL on first render
+    if (tabParam) {
+      console.log('⚡ Initializing tab from URL:', tabParam);
+      return tabParam;
+    }
+    return "overview";
+  });
+  
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState<UserRole>(null);
+  const [authError, setAuthError] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+  const [loggedInUser, setLoggedInUser] = useState<any>(null);
+  const [showResendVerification, setShowResendVerification] = useState(false);
+  const [resendEmail, setResendEmail] = useState("");
+
+  // Check for verification status on mount
+  useEffect(() => {
+    const verified = searchParams.get('verified');
+    const verificationError = searchParams.get('verification_error');
+
+    if (verified === 'true') {
+      addNotification('success', 'Email Verified!', 'Your email has been verified successfully. You can now sign in.');
+      // Remove the query param
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('verified');
+      router.replace(`?${params.toString()}`);
+    }
+
+    if (verificationError) {
+      addNotification('error', 'Verification Failed', decodeURIComponent(verificationError));
+      // Remove the query param
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('verification_error');
+      router.replace(`?${params.toString()}`);
+    }
+  }, []);
+
+  // Sync with URL changes (for browser navigation)
+  useEffect(() => {
+    const userParam = searchParams.get('user');
+    const tabParam = searchParams.get('tab');
+    
+    console.log('🔄 URL changed, syncing state:', { user: userParam, tab: tabParam });
+    
+    if (userParam && ['customer', 'supplier', 'transporter'].includes(userParam)) {
+      setCurrentUser(userParam as UserRole);
+    } else if (!userParam && currentUser) {
+      // URL was cleared, logout
+      setCurrentUser(null);
+    }
+    
+    if (tabParam) {
+      setCurrentTab(tabParam);
+    } else if (!tabParam && currentTab !== 'overview') {
+      setCurrentTab('overview');
+    }
+  }, [searchParams]);
+  
+  // Handle browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      console.log('🔙 Browser navigation detected:', event);
+      const url = new URL(window.location.href);
+      const userParam = url.searchParams.get('user');
+      const tabParam = url.searchParams.get('tab');
+      
+      if (userParam && ['customer', 'supplier', 'transporter'].includes(userParam)) {
+        setCurrentUser(userParam as UserRole);
+      } else {
+        setCurrentUser(null);
+      }
+      
+      if (tabParam) {
+        setCurrentTab(tabParam);
+      } else {
+        setCurrentTab('overview');
+      }
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+  
+  // Update URL when state changes
+  useEffect(() => {
+    if (currentUser) {
+      const params = new URLSearchParams();
+      params.set('user', currentUser);
+      if (currentTab && currentTab !== 'overview') {
+        params.set('tab', currentTab);
+      }
+      
+      const newUrl = `?${params.toString()}`;
+      console.log('📍 Updating URL:', newUrl);
+      router.replace(newUrl, { scroll: false });
+    } else {
+      // Clear URL params when logged out
+      router.replace('/', { scroll: false });
+    }
+  }, [currentUser, currentTab, router]);
 
   // Initialize storage on mount
   useEffect(() => {
     storage.initialize();
   }, []);
+
+  // Real-time database hooks - Connect to Supabase!
+  const { 
+    shipments: dbShipments, 
+    loading: shipmentsLoading,
+    error: shipmentsError,
+    createShipment: dbCreateShipment,
+    updateShipment: dbUpdateShipment,
+    deleteShipment: dbDeleteShipment
+  } = useShipments({});
+
+  const { suppliers: dbSuppliers, loading: suppliersLoading } = useSuppliers({});
+  const { transporters: dbTransporters, loading: transportersLoading } = useTransporters({});
+  const { customers: dbCustomers, loading: customersLoading } = useCustomers();
+
+  // Sync database data with local state
+  useEffect(() => {
+    console.log('🚀 Supabase Data:', { 
+      shipments: dbShipments?.length || 0, 
+      suppliers: dbSuppliers?.length || 0,
+      transporters: dbTransporters?.length || 0,
+      customers: dbCustomers?.length || 0,
+      loading: { shipmentsLoading, suppliersLoading, transportersLoading, customersLoading }
+    });
+    
+    if (dbShipments && dbShipments.length > 0) {
+      console.log('✅ Loading shipments from database:', dbShipments);
+      // Map database shipments to app format with FULL data linking
+      const mappedShipments = dbShipments.map(ship => {
+        const customer = dbCustomers?.find(c => c.id === ship.customer_id);
+        const transporter = dbTransporters?.find(t => t.id === ship.transporter_id);
+        const supplier = dbSuppliers?.find(s => s.id === ship.supplier_id);
+        
+        console.log('� Linking shipment:', {
+          shipment_id: ship.shipment_id,
+          customer_id: ship.customer_id,
+          customer_name: customer?.name,
+          transporter_id: ship.transporter_id,
+          transporter_name: transporter?.name,
+          supplier_id: ship.supplier_id,
+          supplier_name: supplier?.name,
+          status: ship.status
+        });
+        
+        return {
+          id: ship.shipment_id || ship.id,
+          customer: customer?.name || 'Unknown Customer',
+          transporter: transporter?.name || 'Unassigned',
+          supplier: supplier?.name || 'Unknown Supplier',
+          vehicle: 'Not Assigned',
+          mode: (ship.vehicle_type?.toLowerCase().includes('truck') ? 'truck' : 
+                 ship.vehicle_type?.toLowerCase().includes('ship') ? 'ship' :
+                 ship.vehicle_type?.toLowerCase().includes('air') ? 'air' : 'ev') as TransportMode,
+          route: `${ship.from_location} → ${ship.to_location}`,
+          status: ship.status === 'in_transit' ? 'in-transit' : 
+                  ship.status === 'dispatched' ? 'dispatched' :
+                  ship.status === 'delivered' ? 'delivered' :
+                  ship.status === 'preparing' ? 'preparing' : 'pending' as ShipmentStatus,
+          eta: ship.eta ? new Date(ship.eta).toLocaleDateString() : 'TBD',
+          estimatedDelivery: ship.eta || new Date().toISOString(),
+          cost: Number(ship.cost) || 0,
+          carbonFootprint: Number(ship.carbon_footprint) || 0,
+          riskLevel: 'low' as RiskLevel,
+          disruptionProbability: 5,
+          origin: ship.from_location,
+          destination: ship.to_location,
+          weight: Number(ship.weight) || 0,
+          priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent',
+          progress: ship.progress || 0,
+          type: ship.vehicle_type || 'standard',
+          // Store raw DB data for reference
+          dbData: ship
+        };
+      });
+      
+      console.log('🔄 Updating globalShipments with FULL LINKING:', mappedShipments.length, 'shipments');
+      setGlobalShipments(mappedShipments);
+      
+      // Log complete connection summary
+      console.log('🔗 COMPLETE DATA LINKING SUMMARY:');
+      mappedShipments.forEach(ship => {
+        console.log(`
+          📦 Shipment: ${ship.id}
+          👤 Customer: ${ship.customer} (${ship.dbData?.customer_id})
+          🏭 Supplier: ${ship.supplier} (${ship.dbData?.supplier_id})
+          🚚 Transporter: ${ship.transporter} (${ship.dbData?.transporter_id})
+          🚛 Vehicle: ${ship.vehicle}
+          📍 Route: ${ship.route}
+          ⚡ Status: ${ship.status}
+          ✅ All entities connected!
+        `);
+      });
+    }
+  }, [dbShipments, dbCustomers, dbTransporters, shipmentsLoading, customersLoading, transportersLoading]);
 
   // Global state for notifications and alerts
   const [notifications, setNotifications] = useState<Array<{
@@ -313,9 +527,99 @@ export default function FlexMovePage() {
     specialInstructions: ''
   });
 
-  const handleLogin = (role: UserRole) => {
-    setCurrentUser(role);
-    addNotification('success', 'Login Successful', `Welcome to your ${role} dashboard!`);
+  const handleLogin = async (email: string, password: string) => {
+    setAuthLoading(true);
+    setAuthError("");
+    setShowResendVerification(false);
+    
+    try {
+      const result = await DatabaseService.loginUser(email, password);
+      
+      if (result.success && result.user) {
+        setCurrentUser(result.user.role);
+        setLoggedInUser(result.user);
+        addNotification('success', 'Login Successful', `Welcome back, ${result.user.name}!`);
+        
+        // Update URL to show the correct dashboard
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('user', result.user.role);
+        router.push(`?${params.toString()}`);
+      } else {
+        setAuthError(result.error || 'Invalid email or password');
+        // Show resend verification button if needed
+        if ((result as any).needsVerification) {
+          setShowResendVerification(true);
+          setResendEmail(email);
+        }
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      setAuthError('An error occurred during login. Please try again.');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    setAuthLoading(true);
+    try {
+      const response = await fetch('/api/resend-verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: resendEmail }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        addNotification('success', 'Email Sent!', result.message);
+        setShowResendVerification(false);
+      } else {
+        addNotification('error', 'Failed', result.error);
+      }
+    } catch (error) {
+      console.error('Resend verification error:', error);
+      addNotification('error', 'Error', 'Failed to resend verification email');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleSignup = async (userData: {
+    email: string;
+    password: string;
+    name: string;
+    role: 'supplier' | 'transporter' | 'customer';
+    company_name?: string;
+    phone?: string;
+  }) => {
+    setAuthLoading(true);
+    setAuthError("");
+    
+    try {
+      const result = await DatabaseService.createUser(userData);
+      
+      if (result.success) {
+        // Don't auto-login, show success message instead
+        addNotification('success', 'Account Created!', result.message || 'Please check your email to verify your account.');
+        setAuthError("");
+        // Switch to login mode
+        setIsLogin(true);
+        // Clear form
+        setEmail("");
+        setPassword("");
+        setFullName("");
+      } else {
+        setAuthError(result.error || 'Failed to create account');
+      }
+    } catch (error) {
+      console.error('Signup error:', error);
+      setAuthError('An error occurred during signup. Please try again.');
+    } finally {
+      setAuthLoading(false);
+    }
   };
 
   const handleLogout = () => {
@@ -371,39 +675,66 @@ export default function FlexMovePage() {
     addNotification('info', 'Transporter Selected', 'Please fill in the shipment details.');
   };
 
-  const handleShipmentCreated = (shipmentData: any) => {
-    const newShipment: ShipmentData = {
-      id: `SH${Date.now()}`,
-      customer: 'Unknown Customer', // Will be updated when customer data is available
-      transporter: 'Unknown Transporter', // Will be updated when transporter data is available
-      mode: shipmentData.mode as TransportMode,
-      route: `${shipmentData.origin} → ${shipmentData.destination}`,
-      status: 'pending' as ShipmentStatus,
-      eta: '3-5 days',
-      cost: Math.floor(Math.random() * 2000) + 500,
-      carbonFootprint: Math.floor(Math.random() * 200) + 50,
-      riskLevel: shipmentData.priority === 'urgent' ? 'high' : shipmentData.priority === 'high' ? 'medium' : 'low' as RiskLevel,
-      disruptionProbability: Math.floor(Math.random() * 30) + 5,
-      origin: shipmentData.origin,
-      destination: shipmentData.destination,
-      weight: Number(shipmentData.weight) || 0,
-      priority: (shipmentData.priority as any) || 'low',
-      progress: 0
-    };
-    
-    setGlobalShipments(prev => [...prev, newShipment]);
-    setShowCreateShipment(false);
-    setCreateShipmentStep('customer');
-    setSelectedCustomer('');
-    setSelectedTransporter('');
-    setShipmentFormData({
-      origin: '',
-      destination: '',
-      weight: '',
-      priority: '',
-      mode: ''
-    });
-    addNotification('success', 'Shipment Created', `Shipment ${newShipment.id} has been created successfully!`);
+  const handleShipmentCreated = async (shipmentData: any) => {
+    try {
+      // Map UI customer/transporter IDs to database UUIDs
+      // For now, use the first customer and supplier from database
+      const dbCustomerId = dbCustomers && dbCustomers.length > 0 
+        ? dbCustomers[0].id 
+        : '850e8400-e29b-41d4-a716-446655440001'; // Fallback to demo customer
+      
+      const dbSupplierId = dbSuppliers && dbSuppliers.length > 0 
+        ? dbSuppliers[0].id 
+        : '650e8400-e29b-41d4-a716-446655440001'; // Fallback to demo supplier
+      
+      // IMPORTANT: Leave transporter_id as NULL initially
+      // Transporter will be assigned later when they accept the shipment
+      const dbTransporterId = null;
+      
+      console.log('🔍 Creating shipment with IDs:', {
+        customer: dbCustomerId,
+        supplier: dbSupplierId,
+        transporter: dbTransporterId
+      });
+      
+      // Create shipment in database (unassigned - no transporter yet)
+      const newShipment = await dbCreateShipment({
+        shipment_id: `SH${String(Math.floor(Math.random() * 900) + 100).padStart(3, '0')}`,
+        supplier_id: dbSupplierId,
+        customer_id: dbCustomerId,
+        transporter_id: dbTransporterId, // NULL - unassigned
+        from_location: shipmentData.origin,
+        to_location: shipmentData.destination,
+        status: 'preparing', // Initial status - waiting for transporter
+        progress: 0,
+        eta: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days from now
+        cargo_type: shipmentData.cargoType || 'General',
+        weight: `${shipmentData.weight} kg`,
+        vehicle_type: shipmentData.mode === 'truck' ? 'Truck' : shipmentData.mode === 'ship' ? 'Ship' : shipmentData.mode === 'air' ? 'Air' : 'EV Truck',
+        cost: Math.floor(Math.random() * 2000) + 500,
+        carbon_footprint: Math.floor(Math.random() * 200) + 50,
+      });
+      
+      console.log('✅ Shipment created in database:', newShipment);
+      
+      // Reset form
+      setShowCreateShipment(false);
+      setCreateShipmentStep('customer');
+      setSelectedCustomer('');
+      setSelectedTransporter('');
+      setShipmentFormData({
+        origin: '',
+        destination: '',
+        weight: '',
+        priority: '',
+        mode: ''
+      });
+      
+      addNotification('success', 'Shipment Created', `Shipment ${newShipment.shipment_id} has been created! Waiting for transporter to accept.`);
+    } catch (error) {
+      console.error('❌ Error creating shipment:', error);
+      addNotification('error', 'Creation Failed', 'Failed to create shipment. Please try again.');
+    }
   };
 
   const handleDisruptionAction = (disruptionId: string, action: string) => {
@@ -1125,6 +1456,25 @@ export default function FlexMovePage() {
 </div>
 
               </div>
+                  {authError && (
+                    <div className="p-3 rounded-lg bg-red-500/20 border border-red-500/50 text-white text-sm">
+                      {authError}
+                    </div>
+                  )}
+                  {showResendVerification && (
+                    <div className="p-3 rounded-lg bg-blue-500/20 border border-blue-500/50 text-white text-sm">
+                      <p className="mb-2">Need to verify your email?</p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                        onClick={handleResendVerification}
+                        disabled={authLoading}
+                      >
+                        {authLoading ? 'Sending...' : 'Resend Verification Email'}
+                      </Button>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between">
                     <label className="flex items-center gap-2 text-white/80 text-sm select-none">
                       <input
@@ -1140,10 +1490,36 @@ export default function FlexMovePage() {
                   </div>
                   <Button
                     className="w-full font-bold text-base"
-                    onClick={() => handleLogin(role || "supplier")}
-                    disabled={!role}
+                    onClick={async () => {
+                      if (!email || !password || !role) {
+                        setAuthError('Please fill in all required fields');
+                        return;
+                      }
+                      
+                      // Validate role for signup
+                      if (!isLogin && role === 'admin') {
+                        setAuthError('Cannot create admin accounts through signup');
+                        return;
+                      }
+                      
+                      if (isLogin) {
+                        await handleLogin(email, password);
+                      } else {
+                        if (!fullName) {
+                          setAuthError('Please enter your full name');
+                          return;
+                        }
+                        await handleSignup({
+                          email,
+                          password,
+                          name: fullName,
+                          role: role as 'supplier' | 'transporter' | 'customer',
+                        });
+                      }
+                    }}
+                    disabled={!role || !email || !password || authLoading}
                   >
-                {isLogin ? "Sign In" : "Create Account"}
+                {authLoading ? 'Please wait...' : (isLogin ? "Sign In" : "Create Account")}
               </Button>
               <div className="text-center">
                     <button
@@ -1185,7 +1561,13 @@ export default function FlexMovePage() {
               <Button
                 variant="outline"
                     className="btn-glow w-full justify-start bg-transparent border-white/20 text-white hover:bg-white/10"
-                onClick={() => handleLogin("supplier")}
+                onClick={() => {
+                  setCurrentUser("supplier");
+                  const params = new URLSearchParams(searchParams.toString());
+                  params.set('user', 'supplier');
+                  router.push(`?${params.toString()}`);
+                  addNotification('info', 'Demo Mode', 'Logged in as Supplier (Demo)');
+                }}
               >
                 <Package className="h-4 w-4 mr-2" />
                 Demo as Supplier
@@ -1193,7 +1575,13 @@ export default function FlexMovePage() {
               <Button
                 variant="outline"
                     className="btn-glow w-full justify-start bg-transparent border-white/20 text-white hover:bg-white/10"
-                onClick={() => handleLogin("transporter")}
+                onClick={() => {
+                  setCurrentUser("transporter");
+                  const params = new URLSearchParams(searchParams.toString());
+                  params.set('user', 'transporter');
+                  router.push(`?${params.toString()}`);
+                  addNotification('info', 'Demo Mode', 'Logged in as Transporter (Demo)');
+                }}
               >
                 <Truck className="h-4 w-4 mr-2" />
                 Demo as Transporter
@@ -1201,7 +1589,13 @@ export default function FlexMovePage() {
               <Button
                 variant="outline"
                     className="btn-glow w-full justify-start bg-transparent border-white/20 text-white hover:bg-white/10"
-                onClick={() => handleLogin("customer")}
+                onClick={() => {
+                  setCurrentUser("customer");
+                  const params = new URLSearchParams(searchParams.toString());
+                  params.set('user', 'customer');
+                  router.push(`?${params.toString()}`);
+                  addNotification('info', 'Demo Mode', 'Logged in as Customer (Demo)');
+                }}
               >
                 <MapPin className="h-4 w-4 mr-2" />
                 Demo as Customer
@@ -1303,6 +1697,8 @@ export default function FlexMovePage() {
             shipments={globalShipments}
             disruptions={globalDisruptions}
             onAIInsights={handleAIInsights}
+            currentTab={currentTab}
+            onTabChange={setCurrentTab}
           />
         )}
         {currentUser === "transporter" && (
@@ -1311,6 +1707,12 @@ export default function FlexMovePage() {
             onShipmentStatusUpdate={handleShipmentStatusUpdate}
             shipments={globalShipments}
             onAIInsights={handleAIInsights}
+            dbShipments={dbShipments}
+            dbSuppliers={dbSuppliers}
+            dbTransporters={dbTransporters}
+            dbUpdateShipment={dbUpdateShipment}
+            currentTab={currentTab}
+            onTabChange={setCurrentTab}
           />
         )}
         {currentUser === "customer" && (
@@ -1320,6 +1722,8 @@ export default function FlexMovePage() {
             shipments={globalShipments}
             suppliers={suppliers}
             onAIInsights={handleAIInsights}
+            currentTab={currentTab}
+            onTabChange={setCurrentTab}
           />
         )}
       </main>
@@ -1783,7 +2187,9 @@ function SupplierDashboard({
   onRerouteRequest,
   shipments = [], 
   disruptions: propDisruptions = [],
-  onAIInsights
+  onAIInsights,
+  currentTab = "overview",
+  onTabChange
 }: {
   onCreateShipment: () => void;
   onDisruptionAction: (id: string, action: string) => void;
@@ -1791,10 +2197,43 @@ function SupplierDashboard({
   shipments: ShipmentData[];
   disruptions: DisruptionAlert[];
   onAIInsights: (message: string, context?: any) => void;
+  currentTab?: string;
+  onTabChange?: (tab: string) => void;
 }) {
   const [selectedShipment, setSelectedShipment] = useState<ShipmentData | null>(null);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState(currentTab);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const [supplierShipments, setSupplierShipments] = useState<ShipmentData[]>([]);
+  
+  // Sync with parent tab state
+  useEffect(() => {
+    setActiveTab(currentTab);
+  }, [currentTab]);
+  
+  // Notify parent when tab changes
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    if (onTabChange) {
+      onTabChange(tab);
+    }
+  };
+  
+  // Sync supplier shipments from database
+  useEffect(() => {
+    console.log('🏭 Supplier Dashboard - Syncing shipments:', shipments.length);
+    // Filter and display all shipments (supplier sees all)
+    const enrichedShipments = shipments.map(ship => {
+      console.log('🔗 Supplier shipment link:', {
+        id: ship.id,
+        customer: ship.customer,
+        transporter: ship.transporter,
+        vehicle: ship.vehicle,
+        status: ship.status
+      });
+      return ship;
+    });
+    setSupplierShipments(enrichedShipments);
+  }, [shipments]);
 
   const customers = [
     { id: "C001", name: "TechCorp India Pvt Ltd", location: "New Delhi, DL" },
@@ -2020,7 +2459,7 @@ function SupplierDashboard({
         <div className="absolute -bottom-5 -left-5 w-32 h-32 bg-white/5 rounded-full"></div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
   <TabsList className="flex w-full overflow-x-auto gap-1 mb-6 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 p-1 rounded-lg border dark:border-slate-700 sm:grid sm:grid-cols-3 md:grid-cols-5">
           <TabsTrigger 
             value="overview" 
@@ -2171,69 +2610,69 @@ function SupplierDashboard({
         </CardHeader>
             <CardContent className="p-6">
           <div className="space-y-4">
-            {[
-              {
-                id: "SH001",
-                customer: "TechCorp Inc.",
-                status: "In Transit",
-                eta: "2 days",
-                    progress: 65,
-                    color: "blue"
-              },
-              {
-                id: "SH002",
-                customer: "Global Retail",
-                status: "Delivered",
-                eta: "Completed",
-                    progress: 100,
-                    color: "green"
-              },
-              {
-                id: "SH003",
-                customer: "Manufacturing Co.",
-                status: "Pending",
-                eta: "5 days",
-                    progress: 10,
-                    color: "yellow"
-              },
-            ].map((shipment) => (
+            {supplierShipments.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="font-medium">No shipments yet</p>
+                <p className="text-sm">Create a shipment to get started</p>
+              </div>
+            ) : (
+              supplierShipments.slice(0, 3).map((shipment) => {
+                const statusColor = 
+                  shipment.status === 'delivered' ? 'green' :
+                  shipment.status === 'in-transit' ? 'blue' : 'yellow';
+                const statusDisplay = 
+                  shipment.status === 'in-transit' ? 'In Transit' :
+                  shipment.status === 'delivered' ? 'Delivered' :
+                  shipment.status === 'dispatched' ? 'Dispatched' : 'Pending';
+                
+                return (
               <div
                 key={shipment.id}
                     className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between p-4 border rounded-lg bg-white dark:bg-slate-800/50 dark:border-slate-700 shadow-sm hover:shadow-md transition-all duration-200"
                   >
                     <div className="flex items-center gap-4">
                       <div className={`p-2 rounded-lg ${
-                        shipment.color === 'blue' ? 'bg-blue-100 dark:bg-blue-900/50' :
-                        shipment.color === 'green' ? 'bg-green-100 dark:bg-green-900/50' : 'bg-yellow-100 dark:bg-yellow-900/50'
+                        statusColor === 'blue' ? 'bg-blue-100 dark:bg-blue-900/50' :
+                        statusColor === 'green' ? 'bg-green-100 dark:bg-green-900/50' : 'bg-yellow-100 dark:bg-yellow-900/50'
                       }`}>
                         <Package className={`h-4 w-4 ${
-                          shipment.color === 'blue' ? 'text-blue-600 dark:text-blue-400' :
-                          shipment.color === 'green' ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'
+                          statusColor === 'blue' ? 'text-blue-600 dark:text-blue-400' :
+                          statusColor === 'green' ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'
                         }`} />
                       </div>
                 <div>
                         <div className="font-semibold text-slate-800 dark:text-slate-200">{shipment.id}</div>
-                        <div className="text-sm text-slate-600 dark:text-slate-400">{shipment.customer}</div>
+                        <div className="text-sm text-slate-600 dark:text-slate-400">
+                          {shipment.customer} • {shipment.transporter}
+                          {shipment.vehicle && shipment.vehicle !== 'Not Assigned' && (
+                            <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded">
+                              🚛 {shipment.vehicle}
+                            </span>
+                          )}
+                        </div>
                   </div>
                 </div>
                 <div className="text-left sm:text-right w-full sm:w-auto">
                       <Badge 
                         variant={
-                          shipment.status === "Delivered" ? "default" :
-                          shipment.status === "In Transit" ? "secondary" : "outline"
+                          shipment.status === "delivered" ? "default" :
+                          shipment.status === "in-transit" ? "secondary" : "outline"
                         }
                         className={
-                          shipment.status === "Delivered" ? "bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300" :
-                          shipment.status === "In Transit" ? "bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300" : 
+                          statusColor === 'green' ? "bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300" :
+                          statusColor === 'blue' ? "bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300" : 
                           "bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300"
                         }
                       >
-                        {shipment.status}
+                        {statusDisplay}
                       </Badge>
                       <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{shipment.eta}</div>
                 </div>
               </div>
-            ))}
+                );
+              })
+            )}
           </div>
         </CardContent>
       </Card>
@@ -2920,6 +3359,14 @@ function SupplierDashboard({
               </CardContent>
             </Card>
           </div>
+
+          {/* Telegram Integration Section */}
+          <div className="mt-6">
+            <TelegramLink 
+              userId="supplier-demo" 
+              userName="supplier"
+            />
+          </div>
         </TabsContent>
       </Tabs>
     </div>
@@ -2931,47 +3378,80 @@ function TransporterDashboard({
   onShipmentStatusUpdate, 
   shipments = [],
   onAIInsights,
+  dbShipments = [],
+  dbSuppliers = [],
+  dbTransporters = [],
+  dbUpdateShipment,
+  currentTab = "overview",
+  onTabChange
 }: {
   onRequestAction: (id: string, action: 'accept' | 'decline') => void;
   onShipmentStatusUpdate: (id: string, status: string) => void;
   shipments: ShipmentData[];
   onAIInsights: (message: string, context?: any) => void;
+  dbShipments?: any[];
+  dbSuppliers?: any[];
+  dbTransporters?: any[];
+  dbUpdateShipment?: (id: string, updates: any) => Promise<any>;
+  currentTab?: string;
+  onTabChange?: (tab: string) => void;
 }) {
   const [showAddVehicle, setShowAddVehicle] = useState(false);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState(currentTab);
   const [showAnalytics, setShowAnalytics] = useState(false);
-  const [activeShipments, setActiveShipments] = useState([
-    {
-      id: "SH001",
-      supplier: "TechCorp India Pvt Ltd",
-      route: "DEL → MUM",
-      status: "in-transit",
-      progress: 65,
-      vehicle: "TRK-001",
-      eta: "18 hours",
-      lastUpdate: "2 hours ago",
-    },
-    {
-      id: "SH004",
-      supplier: "Global Retail India",
-      route: "BLR → HYD",
-      status: "dispatched",
-      progress: 25,
-      vehicle: "SHP-002",
-      eta: "3 days",
-      lastUpdate: "6 hours ago",
-    },
-    {
-      id: "SH007",
-      supplier: "Manufacturing Co. India",
-      route: "AMD → JAI",
-      status: "preparing",
-      progress: 10,
-      vehicle: "TRK-003",
-      eta: "5 days",
-      lastUpdate: "1 day ago",
-    },
-  ]);
+  const [fleetManagementTab, setFleetManagementTab] = useState("vehicles"); // Separate state for Fleet Management
+  
+  // Sync with parent tab state
+  useEffect(() => {
+    setActiveTab(currentTab);
+  }, [currentTab]);
+  
+  // Notify parent when tab changes
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    if (onTabChange) {
+      onTabChange(tab);
+    }
+  };
+  
+  // Handle Fleet Management tab changes independently
+  const handleFleetTabChange = (tab: string) => {
+    console.log('🚢 Fleet Management tab changed to:', tab);
+    setFleetManagementTab(tab);
+  };
+  
+  // Load active shipments (assigned transporter but no vehicle yet)
+  const [activeShipments, setActiveShipments] = useState<any[]>([]);
+  
+  useEffect(() => {
+    // Filter shipments with transporter assigned but no vehicle
+    const assignedShipments = dbShipments?.filter(ship => {
+      const hasTransporter = !!ship.transporter_id;
+      const hasNoVehicle = !ship.vehicle_id; // Assuming vehicle_id field exists
+      console.log('🚛 Shipment:', ship.shipment_id, {
+        transporter_id: ship.transporter_id,
+        hasTransporter,
+        hasNoVehicle
+      });
+      return hasTransporter && hasNoVehicle;
+    }) || [];
+    
+    console.log('🚛 Active shipments (has transporter, no vehicle):', assignedShipments.length);
+    
+    const mapped = assignedShipments.map(ship => ({
+      id: ship.shipment_id || ship.id,
+      supplier: dbSuppliers?.find(s => s.id === ship.supplier_id)?.name || 'Unknown Supplier',
+      route: `${ship.from_location} → ${ship.to_location}`,
+      status: ship.status,
+      progress: ship.progress || 0,
+      vehicle: 'Not Assigned',
+      eta: ship.eta ? new Date(ship.eta).toLocaleDateString() : 'TBD',
+      lastUpdate: new Date(ship.updated_at).toLocaleString(),
+      shipmentData: ship
+    }));
+    
+    setActiveShipments(mapped);
+  }, [dbShipments, dbSuppliers]);
 
   const [vehicles, setVehicles] = useState([
     {
@@ -3023,44 +3503,119 @@ function TransporterDashboard({
       lastMaintenance: "2025-02-10",
     },
   ]);
+  
+  // Update vehicles with assigned shipments
+  useEffect(() => {
+    setVehicles(prevVehicles => {
+      return prevVehicles.map(vehicle => {
+        // Find shipments assigned to this vehicle
+        const assignedShipment = dbShipments?.find(ship => ship.vehicle_id === vehicle.id);
+        
+        if (assignedShipment) {
+          return {
+            ...vehicle,
+            status: 'in-transit',
+            assignedShipment: {
+              id: assignedShipment.shipment_id,
+              route: `${assignedShipment.from_location} → ${assignedShipment.to_location}`,
+              progress: assignedShipment.progress
+            }
+          };
+        }
+        return vehicle;
+      });
+    });
+  }, [dbShipments]);
 
-  const [pendingRequests, setPendingRequests] = useState([
-    {
-      id: "REQ001",
-      supplier: "TechCorp India Pvt Ltd",
-      route: "DEL → MUM",
-      priority: "High",
-      weight: "20,000 kg",
-      estimatedRevenue: 2450,
-      pickupDate: "2025-02-15",
-      deliveryDate: "2025-02-18",
-    },
-    {
-      id: "REQ002",
-      supplier: "Global Retail India",
-      route: "BLR → HYD",
-      priority: "Medium",
-      weight: "12,000 kg",
-      estimatedRevenue: 1850,
-      pickupDate: "2025-02-16",
-      deliveryDate: "2025-02-20",
-    },
-    {
-      id: "REQ003",
-      supplier: "Manufacturing Co. India",
-      route: "AMD → JAI",
-      priority: "Low",
-      weight: "10,000 kg",
-      estimatedRevenue: 1650,
-      pickupDate: "2025-02-17",
-      deliveryDate: "2025-02-22",
-    },
-  ]);
+  // Load pending requests from unassigned shipments
+  const [pendingRequests, setPendingRequests] = useState<any[]>([]);
+  
+  useEffect(() => {
+    console.log('🔄 Checking for unassigned shipments...', {
+      dbShipmentsCount: dbShipments?.length || 0,
+      dbSuppliersCount: dbSuppliers?.length || 0,
+      dbTransportersCount: dbTransporters?.length || 0,
+      hasData: !!dbShipments && !!dbSuppliers
+    });
+    
+    // Wait for data to load
+    if (!dbShipments || !dbSuppliers) {
+      console.log('⏳ Waiting for data to load...');
+      return;
+    }
+    
+    // Filter shipments without transporter (unassigned)
+    const unassignedShipments = dbShipments.filter(ship => {
+      const isUnassigned = !ship.transporter_id;
+      console.log('📦 Checking shipment:', ship.shipment_id, {
+        transporter_id: ship.transporter_id,
+        isUnassigned,
+        status: ship.status,
+        from: ship.from_location,
+        to: ship.to_location
+      });
+      return isUnassigned;
+    });
+    
+    console.log('🚚 Found unassigned shipments:', unassignedShipments.length);
+    
+    const requests = unassignedShipments.map(ship => {
+      const supplier = dbSuppliers.find(s => s.id === ship.supplier_id);
+      console.log('🔗 Mapping request:', {
+        shipment_id: ship.shipment_id,
+        supplier_id: ship.supplier_id,
+        supplier_name: supplier?.name
+      });
+      
+      return {
+        id: ship.shipment_id || ship.id,
+        supplier: supplier?.name || 'Unknown Supplier',
+        route: `${ship.from_location || 'Unknown'} → ${ship.to_location || 'Unknown'}`,
+        priority: ship.status === 'urgent' ? 'High' : ship.status === 'preparing' ? 'Medium' : 'Low',
+        weight: ship.weight || 'N/A',
+        estimatedRevenue: ship.cost || 0,
+        pickupDate: ship.created_at ? new Date(ship.created_at).toLocaleDateString() : 'TBD',
+        deliveryDate: ship.eta ? new Date(ship.eta).toLocaleDateString() : 'TBD',
+        shipmentData: ship // Store full shipment data
+      };
+    });
+    
+    console.log('✅ Setting pending requests:', requests.length, 'requests');
+    console.log('📋 Requests details:', requests);
+    setPendingRequests(requests);
+  }, [dbShipments, dbSuppliers, dbTransporters]);
 
-  const handleRequestAction = (
+  const handleRequestAction = async (
     requestId: string,
     action: "accept" | "decline"
   ) => {
+    if (action === 'accept') {
+      try {
+        // Find the shipment and assign transporter
+        const request = pendingRequests.find(r => r.id === requestId);
+        if (request && request.shipmentData) {
+          const transporterId = dbTransporters && dbTransporters.length > 0 
+            ? dbTransporters[0].id 
+            : null;
+          
+          if (transporterId && dbUpdateShipment) {
+            console.log('✅ Accepting shipment:', requestId, 'Assigning transporter:', transporterId);
+            // Update shipment with transporter
+            await dbUpdateShipment(request.shipmentData.id, {
+              transporter_id: transporterId,
+              status: 'dispatched'
+            });
+            console.log('✅ Shipment updated successfully!');
+          } else {
+            console.error('❌ Missing transporterId or dbUpdateShipment function');
+          }
+        } else {
+          console.error('❌ Request not found:', requestId);
+        }
+      } catch (error) {
+        console.error('❌ Error accepting shipment:', error);
+      }
+    }
     onRequestAction(requestId, action);
   };
 
@@ -3311,7 +3866,11 @@ function TransporterDashboard({
               <CardDescription className="text-slate-600 dark:text-slate-400">Monitor and manage your vehicle fleet with comprehensive controls</CardDescription>
         </CardHeader>
             <CardContent className="p-6">
-          <Tabs defaultValue="vehicles" className="w-full">
+          <Tabs 
+            value={fleetManagementTab} 
+            onValueChange={handleFleetTabChange} 
+            className="w-full"
+          >
                 <TabsList className="flex w-full overflow-x-auto gap-1 bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 p-1 rounded-lg dark:border dark:border-slate-700 sm:grid sm:grid-cols-3">
                   <TabsTrigger 
                     value="vehicles" 
@@ -3322,10 +3881,15 @@ function TransporterDashboard({
                   </TabsTrigger>
                   <TabsTrigger 
                     value="requests" 
-                    className="flex-1 min-w-[140px] sm:min-w-0 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 dark:text-slate-300 font-semibold transition-all duration-200"
+                    className="flex-1 min-w-[140px] sm:min-w-0 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-md data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 dark:text-slate-300 font-semibold transition-all duration-200 relative"
                   >
                     <Package className="h-4 w-4 mr-2" />
                     Requests
+                    {pendingRequests.length > 0 && (
+                      <Badge className="ml-2 bg-red-500 text-white text-xs">
+                        {pendingRequests.length}
+                      </Badge>
+                    )}
                   </TabsTrigger>
                   <TabsTrigger 
                     value="shipments" 
@@ -3417,13 +3981,41 @@ function TransporterDashboard({
                           <AIInsightsButton
                             size="sm"
                             variant="outline"
-                            label="Next best step"
-                            message={`For vehicle ${vehicle.id}, suggest the next best action today. Should we assign it to a pending request, keep available, or schedule maintenance? Include rationale.`}
-                            context={{ vehicle, vehicles, pendingRequests, activeShipments }}
-                            onClick={onAIInsights}
+                            onClick={() =>
+                              router.push(`/chat?topic=vehicle-${vehicle.id}`)
+                            }
                           />
                         </div>
                       </div>
+                      
+                      {/* Show assigned shipment if any */}
+                      {vehicle.assignedShipment && (
+                        <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Package className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            <span className="font-medium text-sm text-blue-900 dark:text-blue-100">
+                              Assigned Shipment: {vehicle.assignedShipment.id}
+                            </span>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Route: {vehicle.assignedShipment.route}
+                          </div>
+                          {vehicle.assignedShipment.progress && (
+                            <div className="mt-2">
+                              <div className="flex justify-between text-xs mb-1">
+                                <span>Progress</span>
+                                <span>{vehicle.assignedShipment.progress}%</span>
+                              </div>
+                              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                <div 
+                                  className="bg-blue-500 dark:bg-blue-400 h-2 rounded-full transition-all duration-300" 
+                                  style={{width: `${vehicle.assignedShipment.progress}%`}}
+                                ></div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -3431,87 +4023,118 @@ function TransporterDashboard({
             </TabsContent>
 
             <TabsContent value="requests" className="space-y-4">
-              <div className="space-y-4">
-                {pendingRequests.map((request) => (
-                  <div key={request.id} className="p-4 border rounded-lg">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-3">
-                      <div>
-                        <div className="font-medium">{request.id}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {request.supplier}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {request.route}
-                        </div>
-                      </div>
-                      <Badge
-                        variant={
-                          request.priority === "High"
-                            ? "destructive"
-                            : request.priority === "Medium"
-                              ? "secondary"
-                              : "outline"
-                        }
-                      >
-                        {request.priority} Priority
-                      </Badge>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
-                      <div>
-                        <span className="text-muted-foreground">Weight:</span>
-                        <div className="font-medium">{request.weight}</div>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Revenue:</span>
-                        <div className="font-medium text-primary">
-                          {formatCurrencyINR(request.estimatedRevenue)}
-                        </div>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Pickup:</span>
-                        <div className="font-medium">{request.pickupDate}</div>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Delivery:</span>
-                        <div className="font-medium">
-                          {request.deliveryDate}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          handleRequestAction(request.id, "decline")
-                        }
-                      >
-                        <XCircle className="h-4 w-4 mr-1" />
-                        Decline
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() =>
-                          handleRequestAction(request.id, "accept")
-                        }
-                      >
-                        <CheckCircle className="h-4 w-4 mr-1" />
-                        Accept
-                      </Button>
-                      <AIInsightsButton
-                        size="sm"
-                        variant="outline"
-                        label="AI Suggestion"
-                        message={`Draft a quote and ETA for request ${request.id}. Recommend the best vehicle and route, and give a quick INR cost breakdown.`}
-                        context={{ request, vehicles, activeShipments }}
-                        onClick={onAIInsights}
-                      />
-                    </div>
-                  </div>
-                ))}
+              <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="text-sm text-blue-900 dark:text-blue-100 font-medium">
+                  📊 Pending Requests: {pendingRequests.length}
+                </div>
+                <div className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                  {!dbShipments || !dbSuppliers ? 
+                    '⏳ Loading data from database...' : 
+                    `✅ Loaded ${dbShipments?.length || 0} shipments, ${dbSuppliers?.length || 0} suppliers`
+                  }
+                </div>
+                <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                  Current Fleet Tab: {fleetManagementTab}
+                </div>
               </div>
+              
+              {!dbShipments || !dbSuppliers ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading requests...</p>
+                </div>
+              ) : pendingRequests.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="font-medium">No pending requests</p>
+                  <p className="text-sm">New shipment requests will appear here</p>
+                  <p className="text-xs mt-2 text-blue-600 dark:text-blue-400">
+                    💡 Tip: Requests are shipments without an assigned transporter
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {pendingRequests.map((request) => (
+                    <div key={request.id} className="p-4 border rounded-lg">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-3">
+                        <div>
+                          <div className="font-medium">{request.id}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {request.supplier}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {request.route}
+                          </div>
+                        </div>
+                        <Badge
+                          variant={
+                            request.priority === "High"
+                              ? "destructive"
+                              : request.priority === "Medium"
+                                ? "secondary"
+                                : "outline"
+                          }
+                        >
+                          {request.priority} Priority
+                        </Badge>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
+                        <div>
+                          <span className="text-muted-foreground">Weight:</span>
+                          <div className="font-medium">{request.weight}</div>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Revenue:</span>
+                          <div className="font-medium text-primary">
+                            {formatCurrencyINR(request.estimatedRevenue)}
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Pickup:</span>
+                          <div className="font-medium">{request.pickupDate}</div>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Delivery:</span>
+                          <div className="font-medium">
+                            {request.deliveryDate}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            handleRequestAction(request.id, "decline")
+                          }
+                        >
+                          <XCircle className="h-4 w-4 mr-1" />
+                          Decline
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() =>
+                            handleRequestAction(request.id, "accept")
+                          }
+                        >
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Accept
+                        </Button>
+                        <AIInsightsButton
+                          size="sm"
+                          variant="outline"
+                          label="AI Suggestion"
+                          message={`Draft a quote and ETA for request ${request.id}. Recommend the best vehicle and route, and give a quick INR cost breakdown.`}
+                          context={{ request, vehicles, activeShipments }}
+                          onClick={onAIInsights}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="shipments" className="space-y-4">
@@ -3557,11 +4180,40 @@ function TransporterDashboard({
                       </div>
                       <Progress value={shipment.progress} className="h-2" />
 
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-2">
                         <div className="text-xs text-muted-foreground">
                           Last update: {shipment.lastUpdate}
                         </div>
                         <div className="flex gap-2">
+                          {shipment.vehicle === 'Not Assigned' && (
+                            <Select
+                              onValueChange={async (vehicleId) => {
+                                try {
+                                  console.log('🚗 Assigning vehicle:', vehicleId, 'to shipment:', shipment.id);
+                                  if (dbUpdateShipment && shipment.shipmentData) {
+                                    await dbUpdateShipment(shipment.shipmentData.id, {
+                                      vehicle_id: vehicleId,
+                                      status: 'in_transit'
+                                    });
+                                    console.log('✅ Vehicle assigned successfully!');
+                                  }
+                                } catch (error) {
+                                  console.error('❌ Error assigning vehicle:', error);
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="w-48">
+                                <SelectValue placeholder="Assign Vehicle" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {vehicles.filter(v => v.status === 'available').map(vehicle => (
+                                  <SelectItem key={vehicle.id} value={vehicle.id}>
+                                    {vehicle.id} - {vehicle.model}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
                           <Select
                             onValueChange={(value) => {
                               const statusMap: {
@@ -4134,7 +4786,9 @@ function CustomerDashboard({
   onNewOrder,
   shipments = [],
   suppliers = [],
-  onAIInsights
+  onAIInsights,
+  currentTab = "overview",
+  onTabChange
 }: {
   onRatingSubmit: (id: string, rating: number, feedback: string) => void;
   onNewOrder: () => void;
@@ -4153,14 +4807,63 @@ function CustomerDashboard({
     onTimeRate: number;
   }>;
   onAIInsights: (message: string, context?: any) => void;
+  currentTab?: string;
+  onTabChange?: (tab: string) => void;
 }) {
   const [showTrackShipment, setShowTrackShipment] = useState(false);
   const [selectedShipment, setSelectedShipment] = useState<any>(null);
   const [deliveryPreference, setDeliveryPreference] = useState("eco");
   const [showRatingDialog, setShowRatingDialog] = useState(false);
   const [shipmentToRate, setShipmentToRate] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState(currentTab);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  
+  // Sync with parent tab state
+  useEffect(() => {
+    setActiveTab(currentTab);
+  }, [currentTab]);
+  
+  // Notify parent when tab changes
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    if (onTabChange) {
+      onTabChange(tab);
+    }
+  };
+  
+  // Sync database shipments with vehicle assignments to incomingShipments
+  useEffect(() => {
+    // Filter shipments for current customer that have vehicles assigned
+    const customerShipmentsWithVehicles = shipments.filter(ship => {
+      const hasVehicle = ship.vehicle && ship.vehicle !== 'Not Assigned';
+      console.log('📦 Customer shipment:', ship.id, {
+        hasVehicle,
+        vehicle: ship.vehicle,
+        status: ship.status
+      });
+      return hasVehicle;
+    });
+    
+    if (customerShipmentsWithVehicles.length > 0) {
+      const mappedShipments = customerShipmentsWithVehicles.map(ship => ({
+        id: ship.id,
+        supplier: ship.supplier || 'Unknown Supplier',
+        transporter: ship.transporter || 'Unknown Transporter',
+        status: ship.status,
+        progress: ship.progress || 0,
+        eta: ship.eta || 'Calculating...',
+        route: ship.route || 'Route not available',
+        estimatedDelivery: ship.estimatedDelivery || new Date().toISOString(),
+        trackingUpdates: [],
+        deliveryType: ship.type || 'standard',
+        carbonFootprint: 0.5,
+        cost: 2000,
+      }));
+      
+      console.log('✅ Setting customer incoming shipments:', mappedShipments.length);
+      setIncomingShipments(mappedShipments);
+    }
+  }, [shipments]);
 
   const [incomingShipments, setIncomingShipments] = useState([
     {
@@ -5378,6 +6081,14 @@ function CustomerDashboard({
                 </div>
               </CardContent>
             </Card>
+          </div>
+
+          {/* Telegram Integration Section */}
+          <div className="mt-6">
+            <TelegramLink 
+              userId="customer-demo" 
+              userName="customer"
+            />
           </div>
 
           <Card className="shadow-lg border-0 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-800/50 dark:border-slate-700">
